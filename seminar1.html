@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>システム設計とは？ - 第1回勉強会</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reset.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/black.css">
+  <style>
+    :root {
+      --accent: #4f9cf9;
+      --accent2: #a78bfa;
+    }
+
+    .reveal h1, .reveal h2 {
+      color: var(--accent);
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+
+    .reveal h3 {
+      color: var(--accent2);
+    }
+
+    /* タイトルスライド */
+    .title-slide h1 {
+      font-size: 2.2em;
+      margin-bottom: 0.3em;
+    }
+
+    .title-slide .subtitle {
+      font-size: 1.1em;
+      color: #aaa;
+      letter-spacing: 0.1em;
+    }
+
+    /* カードボックス */
+    .card {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(79,156,249,0.3);
+      border-radius: 12px;
+      padding: 0.8em 1.2em;
+      margin: 0.5em 0;
+      text-align: left;
+    }
+
+    /* 矢印フロー */
+    .flow {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.6em;
+      flex-wrap: wrap;
+      margin-top: 0.6em;
+    }
+
+    .flow-box {
+      background: rgba(79,156,249,0.15);
+      border: 1px solid var(--accent);
+      border-radius: 8px;
+      padding: 0.5em 1em;
+      font-size: 0.85em;
+      white-space: nowrap;
+    }
+
+    .flow-label {
+      font-size: 0.65em;
+      color: #aaa;
+      display: block;
+      margin-top: 0.1em;
+    }
+
+    .arrow {
+      color: var(--accent);
+      font-size: 1.3em;
+    }
+
+    /* 要件グリッド */
+    .req-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.6em;
+      margin-top: 0.6em;
+    }
+
+    .req-item {
+      background: rgba(167,139,250,0.12);
+      border: 1px solid rgba(167,139,250,0.4);
+      border-radius: 10px;
+      padding: 0.6em 0.8em;
+      font-size: 0.78em;
+      display: flex;
+      align-items: center;
+      gap: 0.4em;
+    }
+
+    .req-icon {
+      font-size: 1.2em;
+    }
+
+    /* まとめバナー */
+    .summary-banner {
+      background: linear-gradient(135deg, rgba(79,156,249,0.2), rgba(167,139,250,0.2));
+      border: 1px solid var(--accent);
+      border-radius: 12px;
+      padding: 0.8em 1.4em;
+      margin-top: 1em;
+      font-size: 0.9em;
+      font-weight: 600;
+      color: #fff;
+    }
+
+    /* Excel比較 */
+    .compare {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1em;
+      margin-top: 0.6em;
+    }
+
+    .compare-col {
+      border-radius: 10px;
+      padding: 0.8em;
+      font-size: 0.78em;
+    }
+
+    .compare-col.excel {
+      background: rgba(34,197,94,0.1);
+      border: 1px solid rgba(34,197,94,0.4);
+    }
+
+    .compare-col.limit {
+      background: rgba(239,68,68,0.1);
+      border: 1px solid rgba(239,68,68,0.4);
+    }
+
+    .compare-col h4 {
+      margin: 0 0 0.4em 0;
+      font-size: 1em;
+    }
+
+    .compare-col.excel h4 { color: #4ade80; }
+    .compare-col.limit h4 { color: #f87171; }
+
+    .compare-col ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .compare-col ul li::before {
+      content: "• ";
+    }
+
+    .reveal .slides section {
+      text-align: center;
+    }
+
+    .tag {
+      display: inline-block;
+      background: var(--accent);
+      color: #000;
+      font-size: 0.55em;
+      padding: 0.15em 0.6em;
+      border-radius: 999px;
+      font-weight: 700;
+      vertical-align: middle;
+      margin-left: 0.3em;
+    }
+  </style>
+</head>
+<body>
+<div class="reveal">
+  <div class="slides">
+
+    <!-- スライド1: タイトル -->
+    <section class="title-slide">
+      <br>
+      <h1>システム設計とは？</h1>
+      <p class="subtitle">第1回 システム設計勉強会</p>
+      <br>
+      <p style="font-size:0.55em; color:#666;">System Design Seminar — Session 1</p>
+    </section>
+
+    <!-- スライド2: システムとは -->
+    <section>
+      <h2>そもそも、システムとは何？</h2>
+      <div class="card" style="text-align:center; font-size:0.85em; margin-bottom:1em;">
+        <strong>システム</strong> = 受け取ったデータを処理して値を出力する仕組み
+      </div>
+
+      <h3 style="font-size:0.8em; margin-bottom:0.4em;">例：レジシステム</h3>
+      <div class="flow">
+        <div class="flow-box">
+          <span class="req-icon">🔤</span> 入力<br>
+          <span class="flow-label">商品のバーコード</span>
+        </div>
+        <span class="arrow">→</span>
+        <div class="flow-box">
+          <span class="req-icon">⚙️</span> 処理<br>
+          <span class="flow-label">商品価格の計算</span>
+        </div>
+        <span class="arrow">→</span>
+        <div class="flow-box">
+          <span class="req-icon">💰</span> 出力<br>
+          <span class="flow-label">会計の金額</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- スライド3: 問いかけ -->
+    <section>
+      <h2>なぜ設計が必要なの？</h2>
+      <br>
+      <p style="font-size:1.3em; color:#fbbf24;">🤔 エクセルで十分じゃない？</p>
+      <br>
+      <p style="font-size:0.75em; color:#aaa;">→ 次のスライドで考えてみましょう</p>
+    </section>
+
+    <!-- スライド4: なぜ設計が必要か -->
+    <section>
+      <h2>なぜシステム設計が必要なの？</h2>
+      <p style="font-size:0.75em; color:#ccc; margin-bottom:0.6em;">
+        <strong style="color:var(--accent)">要件</strong> があるから
+      </p>
+
+      <div class="req-grid">
+        <div class="req-item">
+          <span class="req-icon">🔗</span>
+          <span>他システムとの<strong>連携</strong></span>
+        </div>
+        <div class="req-item">
+          <span class="req-icon">🗄️</span>
+          <span><strong>データ整合性</strong>の確保</span>
+        </div>
+        <div class="req-item">
+          <span class="req-icon">🔒</span>
+          <span><strong>セキュリティ</strong>対策</span>
+        </div>
+        <div class="req-item">
+          <span class="req-icon">👥</span>
+          <span><strong>数千人規模</strong>のユーザー対応</span>
+        </div>
+        <div class="req-item" style="grid-column: 1 / -1;">
+          <span class="req-icon">📊</span>
+          <span><strong>膨大なデータ量</strong>の処理</span>
+        </div>
+      </div>
+
+      <div class="summary-banner">
+        要件を満たすためにシステム設計が必要！
+      </div>
+    </section>
+
+    <!-- スライド5: Excelの限界 -->
+    <section>
+      <h2>システム設計では何を考えるの？</h2>
+
+      <div class="compare">
+        <div class="compare-col excel">
+          <h4>✅ Excel でできること</h4>
+          <ul>
+            <li>在庫管理</li>
+            <li>発注管理</li>
+            <li>人員管理</li>
+            <li>etc...</li>
+          </ul>
+        </div>
+        <div class="compare-col limit">
+          <h4>❌ Excel では不十分</h4>
+          <ul>
+            <li>要件を満たせない</li>
+            <li>複数人同時利用</li>
+            <li>大量データの処理</li>
+            <li>セキュリティ管理</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="summary-banner">
+        要件に合わせて <strong>適切なシステム</strong> を設計することが重要
+      </div>
+    </section>
+
+    <!-- スライド6: 概要設計 -->
+    <section>
+      <h2>システムの概要設計</h2>
+      <p style="font-size:0.8em; color:#aaa; margin-bottom:0.8em;">概要設計のフェーズでは、<strong style="color:#fff">「何を作るか」</strong>を決める</p>
+      <div class="card" style="font-size:0.8em;">
+        <ul style="list-style:none; padding:0; margin:0; line-height:1.9em;">
+          <li>📋 機能一覧・画面構成・データの流れ</li>
+          <li>🤝 発注者・PM と合意するための設計</li>
+        </ul>
+      </div>
+      <div class="card" style="font-size:0.78em; margin-top:0.6em; color:#ccc;">
+        <strong style="color:var(--accent2);">例：</strong>
+        商品番号が入力されたら価格を取得し、合計金額を計算する
+      </div>
+    </section>
+
+    <!-- スライド7: 詳細設計 -->
+    <section>
+      <h2>システムの詳細設計</h2>
+      <p style="font-size:0.8em; color:#aaa; margin-bottom:0.8em;">詳細設計のフェーズでは、<strong style="color:#fff">「どう作るか」</strong>を決める</p>
+      <div class="card" style="font-size:0.8em;">
+        <ul style="list-style:none; padding:0; margin:0; line-height:1.9em;">
+          <li>🗄️ DB定義・API仕様・クラス設計</li>
+          <li>👷 エンジニアが実装するための設計</li>
+        </ul>
+      </div>
+      <div class="card" style="font-size:0.78em; margin-top:0.6em; color:#ccc;">
+        <strong style="color:var(--accent2);">例：</strong>
+        入力された商品番号を元に商品マスタテーブルから価格を取得し、レスポンスとして返却する
+      </div>
+    </section>
+
+    <!-- スライド8: 4要素の導入 -->
+    <section>
+      <h2>システム設計に必要な4要素</h2>
+      <p style="font-size:0.78em; color:#aaa; margin-bottom:0.6em;">概要・詳細設計だけでは不十分。こんなリスクを考える必要がある：</p>
+      <div class="req-grid">
+        <div class="req-item">
+          <span class="req-icon">🔴</span>
+          <span>サーバーがダウンしたら？</span>
+        </div>
+        <div class="req-item">
+          <span class="req-icon">📈</span>
+          <span>負荷が増大したら？</span>
+        </div>
+        <div class="req-item">
+          <span class="req-icon">⚠️</span>
+          <span>データの整合性が崩れたら？</span>
+        </div>
+        <div class="req-item">
+          <span class="req-icon">🔓</span>
+          <span>パスワードが解読されたら？</span>
+        </div>
+      </div>
+      <div class="summary-banner" style="margin-top:0.8em;">
+        これらに備えるための <strong>4つの考え方</strong> を紹介します
+      </div>
+    </section>
+
+    <!-- スライド9: 可用性 (1) -->
+    <section>
+      <h2>可用性 <span style="font-size:0.6em; color:#aaa;">Availability</span></h2>
+      <p style="font-size:0.78em; color:#aaa; margin-bottom:0.6em;">サービスがダウンすると…</p>
+      <div class="req-grid">
+        <div class="req-item"><span class="req-icon">🏪</span><span>在庫管理システム：発注・在庫確認ができない</span></div>
+        <div class="req-item"><span class="req-icon">🏢</span><span>社内システム：業務が遂行できない</span></div>
+        <div class="req-item" style="grid-column:1/-1;"><span class="req-icon">🏦</span><span>銀行システム：ATM・オンラインバンキングが利用できない</span></div>
+      </div>
+      <div class="card" style="font-size:0.78em; margin-top:0.6em; text-align:left;">
+        「とりあえず動く」設計 と「バックアップサーバーで稼働する」設計では<br>
+        <strong style="color:var(--accent)">根本の設計から異なる → 要件として最初に定める必要がある</strong>
+      </div>
+    </section>
+
+    <!-- スライド10: 可用性 (2) SLA -->
+    <section>
+      <h2>可用性 — SLA</h2>
+      <p style="font-size:0.78em; color:#aaa; margin-bottom:0.8em;">
+        <strong style="color:#fff">SLA (Service Level Agreement)</strong>：可用性を定量的に定める指標
+      </p>
+      <table style="width:100%; border-collapse:collapse; font-size:0.8em;">
+        <thead>
+          <tr style="background:rgba(79,156,249,0.2);">
+            <th style="padding:0.5em; border:1px solid rgba(79,156,249,0.3);">SLA (%)</th>
+            <th style="padding:0.5em; border:1px solid rgba(79,156,249,0.3);">年間ダウンタイム</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="padding:0.5em; border:1px solid rgba(255,255,255,0.1); text-align:center;">99%</td>
+            <td style="padding:0.5em; border:1px solid rgba(255,255,255,0.1); text-align:center; color:#f87171;">約 87 時間</td>
+          </tr>
+          <tr style="background:rgba(255,255,255,0.03);">
+            <td style="padding:0.5em; border:1px solid rgba(255,255,255,0.1); text-align:center;">99.9%</td>
+            <td style="padding:0.5em; border:1px solid rgba(255,255,255,0.1); text-align:center; color:#fbbf24;">約 8.7 時間</td>
+          </tr>
+          <tr>
+            <td style="padding:0.5em; border:1px solid rgba(255,255,255,0.1); text-align:center;">99.99%</td>
+            <td style="padding:0.5em; border:1px solid rgba(255,255,255,0.1); text-align:center; color:#4ade80;">約 52 分</td>
+          </tr>
+        </tbody>
+      </table>
+      <p style="font-size:0.72em; color:#aaa; margin-top:0.6em;">SLA の目標値によってシステム設計の内容も変わる → 要件側で定める必要がある</p>
+    </section>
+
+    <!-- スライド11: スケーラビリティ (1) -->
+    <section>
+      <h2>スケーラビリティ <span style="font-size:0.6em; color:#aaa;">Scalability</span></h2>
+      <p style="font-size:0.78em; color:#aaa; margin-bottom:0.6em;">こんな場面を想像してみよう：</p>
+      <div class="req-grid">
+        <div class="req-item"><span class="req-icon">👥</span><span>ユーザーが <strong>5倍</strong> に増えた</span></div>
+        <div class="req-item"><span class="req-icon">💾</span><span>ストレージ容量が<strong>不足</strong>しそう</span></div>
+        <div class="req-item" style="grid-column:1/-1;"><span class="req-icon">⚙️</span><span>機能追加でサーバー負荷が<strong>増大</strong></span></div>
+      </div>
+      <div class="summary-banner" style="margin-top:0.8em; font-size:0.82em; font-weight:normal;">
+        スケーラビリティ = 負荷・データ量が増えたときに<br>
+        <strong>性能を維持しながら拡張できる能力</strong>
+      </div>
+    </section>
+
+    <!-- スライド12: スケーラビリティ (2) -->
+    <section>
+      <h2>スケーラビリティの実現方法</h2>
+      <div class="compare" style="margin-top:0.8em;">
+        <div class="compare-col excel" style="text-align:left;">
+          <h4>⬆️ 垂直スケール</h4>
+          <p style="margin:0; font-size:0.9em;">1台のサーバーを強化する</p>
+          <p style="margin:0.4em 0 0 0; font-size:0.78em; color:#aaa;">簡単だが上限あり。<br>変化する需要には対応しづらい</p>
+        </div>
+        <div class="compare-col" style="background:rgba(79,156,249,0.1); border:1px solid rgba(79,156,249,0.4); text-align:left;">
+          <h4 style="color:var(--accent);">↔️ 水平スケール</h4>
+          <p style="margin:0; font-size:0.9em;">複数台のサーバーを用意する</p>
+          <p style="margin:0.4em 0 0 0; font-size:0.78em; color:#aaa;">柔軟に増減できる。<br>物理設置には上限あり（クラウド向き）</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- スライド13: 一貫性 (1) -->
+    <section>
+      <h2>一貫性 <span style="font-size:0.6em; color:#aaa;">Consistency</span></h2>
+      <p style="font-size:0.78em; color:#aaa; margin-bottom:0.6em;">こんな場面を想像してみよう：</p>
+      <div class="card" style="font-size:0.82em; text-align:left; line-height:1.8em;">
+        1️⃣ EC サイトで在庫が <strong>1個</strong> しかない商品<br>
+        2️⃣ <strong>同時に 2人</strong> が購入ボタンを押した<br>
+        3️⃣ 両方の注文が成功してしまった<br>
+        4️⃣ 在庫が <strong style="color:#f87171;">-1個</strong> に…
+      </div>
+      <div class="summary-banner" style="margin-top:0.8em; font-size:0.82em; font-weight:normal;">
+        システム上で<strong>データの矛盾</strong>が発生する可能性がある
+      </div>
+    </section>
+
+    <!-- スライド14: 一貫性 (2) -->
+    <section>
+      <h2>一貫性の実現方法</h2>
+      <p style="font-size:0.8em; color:#aaa; margin-bottom:0.6em;">
+        一貫性 = <strong style="color:#fff">データが常に矛盾のない状態を保つこと</strong>
+      </p>
+      <div class="req-grid">
+        <div class="req-item"><span class="req-icon">🔄</span><span><strong>トランザクション</strong><br><span style="font-size:0.85em; color:#aaa;">DB 側で排他制御</span></span></div>
+        <div class="req-item"><span class="req-icon">🔐</span><span><strong>楽観ロック・悲観ロック</strong></span></div>
+        <div class="req-item" style="grid-column:1/-1;"><span class="req-icon">📨</span><span><strong>メッセージキュー</strong> (SQS など) で順番に処理</span></div>
+      </div>
+    </section>
+
+    <!-- スライド15: エクササイズ1 -->
+    <section>
+      <h2>🎤 Exercise 1</h2>
+      <h3 style="font-size:0.85em;">人気アイドルのチケット販売</h3>
+      <div class="card" style="font-size:0.78em; text-align:left; margin-bottom:0.6em;">
+        <strong style="color:var(--accent);">シナリオ：</strong><br>
+        某人気アイドルのライブチケットが 7/7 20:00 より販売開始。<br>
+        過去には通常時の <strong>100倍</strong> のアクセス数を記録。
+      </div>
+      <div class="card" style="font-size:0.78em; text-align:left; background:rgba(167,139,250,0.08); border-color:rgba(167,139,250,0.4);">
+        <strong style="color:var(--accent2);">Question：</strong>
+        <ul style="margin:0.4em 0 0 1em; line-height:1.8em;">
+          <li>サーバーが落ちないようにどう設計する？</li>
+          <li>アクセスが集中してもパンクしないようにリクエストをどう捌く？</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- スライド16: エクササイズ2 -->
+    <section>
+      <h2>🌐 Exercise 2</h2>
+      <h3 style="font-size:0.85em;">SNS の「いいね」カウンター</h3>
+      <div class="card" style="font-size:0.78em; text-align:left; margin-bottom:0.6em;">
+        <strong style="color:var(--accent);">シナリオ：</strong><br>
+        某有名選手が SNS に写真を投稿。<br>
+        過去の投稿では <strong>1時間に100万「いいね」</strong> が押された。
+      </div>
+      <div class="card" style="font-size:0.78em; text-align:left; background:rgba(167,139,250,0.08); border-color:rgba(167,139,250,0.4);">
+        <strong style="color:var(--accent2);">Question：</strong>
+        <ul style="margin:0.4em 0 0 1em; line-height:1.8em;">
+          <li>全ユーザーに「全く同じ瞬間・全く同じカウント」を見せる必要がある？</li>
+          <li>数秒遅れてもOKなら、システムが止まらないことを優先すべき？</li>
+        </ul>
+      </div>
+    </section>
+
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+<script>
+  Reveal.initialize({
+    hash: true,
+    transition: 'slide',
+    transitionSpeed: 'default',
+    backgroundTransition: 'fade',
+    controls: true,
+    progress: true,
+    slideNumber: 'c/t',
+    center: true,
+  });
+</script>
+</body>
+</html>

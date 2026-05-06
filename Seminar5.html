@@ -1,0 +1,716 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>システム設計 勉強会 第五回 — キャッシュ戦略</title>
+  <link rel="stylesheet" href="node_modules/reveal.js/dist/reset.css">
+  <link rel="stylesheet" href="node_modules/reveal.js/dist/reveal.css">
+  <link rel="stylesheet" href="node_modules/reveal.js/dist/theme/night.css">
+  <style>
+    :root {
+      --accent: #e2e8f0;
+      --dim:    #94a3b8;
+      --muted:  #475569;
+      --warn:   #f59e0b;
+      --good:   #4ade80;
+      --line:   rgba(255,255,255,0.1);
+    }
+
+    .reveal {
+      font-family: 'Segoe UI', 'Hiragino Sans', 'Meiryo', sans-serif;
+      background: #0a0a0a;
+    }
+    .reveal .slide-background { background: #0a0a0a; }
+
+    .slide-title h1 {
+      font-size: 2.4em;
+      font-weight: 300;
+      color: #fff;
+      letter-spacing: 0.06em;
+      border: none !important;
+    }
+    .slide-title .subtitle {
+      color: var(--dim);
+      font-size: 0.85em;
+      letter-spacing: 0.25em;
+      margin-top: 0.8em;
+    }
+    .title-deco {
+      width: 40px; height: 1px;
+      background: var(--muted);
+      margin: 1.2em auto;
+    }
+
+    .section-break h2 {
+      font-size: 2em;
+      font-weight: 300;
+      color: #fff;
+      border: none !important;
+    }
+    .section-num {
+      display: block;
+      font-size: 0.45em;
+      color: var(--muted);
+      letter-spacing: 0.35em;
+      text-transform: uppercase;
+      margin-bottom: 0.6em;
+    }
+
+    .reveal h2 {
+      font-size: 1.15em;
+      font-weight: 400;
+      color: #fff;
+      border-bottom: 1px solid var(--line) !important;
+      padding-bottom: 0.35em;
+      margin-bottom: 0.7em;
+      text-align: left;
+    }
+    .reveal h3 {
+      font-size: 0.85em;
+      font-weight: 600;
+      color: var(--accent);
+      margin-bottom: 0.3em;
+    }
+    .reveal p, .reveal li {
+      font-size: 0.7em;
+      line-height: 1.75;
+      color: #b0b8c8;
+      text-align: left;
+    }
+    .reveal ul { margin-left: 1.2em; }
+    .reveal ul li { margin-bottom: 0.15em; }
+
+    .card-grid { display: grid; gap: 0.7em; }
+    .card-grid.cols-2 { grid-template-columns: 1fr 1fr; }
+    .card-grid.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      padding: 0.75em 0.9em;
+    }
+    .card .card-title {
+      font-size: 0.75em;
+      font-weight: 600;
+      color: #fff;
+      margin-bottom: 0.35em;
+    }
+    .card p, .card li { font-size: 0.63em; color: #94a3b8; }
+
+    .reveal table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.63em;
+      margin: 0.4em 0;
+    }
+    .reveal table th {
+      color: var(--dim);
+      padding: 0.5em 0.8em;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      font-weight: 600;
+      font-size: 0.9em;
+      letter-spacing: 0.05em;
+    }
+    .reveal table td {
+      padding: 0.45em 0.8em;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      color: #b0b8c8;
+      vertical-align: top;
+    }
+    .reveal table td:first-child {
+      color: #fff;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+
+    .highlight-box {
+      border-left: 2px solid var(--dim);
+      padding: 0.55em 0.9em;
+      margin: 0.5em 0;
+      font-size: 0.72em;
+      color: #b0b8c8;
+    }
+    .highlight-box strong { color: #fff; }
+
+    .warn-box {
+      border-left: 2px solid var(--warn);
+      padding: 0.55em 0.9em;
+      margin: 0.5em 0;
+      font-size: 0.68em;
+      color: #b0b8c8;
+    }
+
+    /* フローダイアグラム */
+    .flow {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      font-size: 0.6em;
+      margin: 0.4em 0;
+    }
+    .flow-box {
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      padding: 0.5em 0.8em;
+      text-align: center;
+      white-space: nowrap;
+    }
+    .flow-box .fb-label { color: #fff; font-weight: 600; font-size: 1em; }
+    .flow-box .fb-sub   { color: var(--dim); font-size: 0.85em; margin-top: 0.1em; }
+    .flow-box.hit  { border-color: rgba(74,222,128,0.35); }
+    .flow-box.miss { border-color: rgba(245,158,11,0.35); }
+    .flow-box.cache { border-color: rgba(255,255,255,0.25); }
+    .flow-arrow {
+      flex-shrink: 0;
+      color: var(--muted);
+      padding: 0 0.5em;
+      font-size: 1.1em;
+    }
+    .flow-arrow.labeled {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      font-size: 0.9em;
+      gap: 0.1em;
+    }
+    .flow-arrow .arrow-text { color: var(--muted); font-size: 0.85em; }
+
+    /* キャッシュ階層 */
+    .cache-layers {
+      display: flex;
+      flex-direction: column;
+      gap: 0.3em;
+      font-size: 0.65em;
+    }
+    .cache-layer {
+      display: grid;
+      grid-template-columns: 120px 1fr;
+      gap: 0.6em;
+      align-items: center;
+    }
+    .cache-layer-label {
+      color: var(--dim);
+      text-align: right;
+      font-size: 0.9em;
+    }
+    .cache-layer-bar {
+      border: 1px solid var(--line);
+      border-radius: 3px;
+      padding: 0.35em 0.7em;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .cache-layer-bar .bar-name { color: #fff; font-weight: 500; }
+    .cache-layer-bar .bar-meta { color: var(--muted); font-size: 0.85em; }
+
+    .text-warn  { color: var(--warn); }
+    .text-good  { color: var(--good); }
+    .text-muted { color: var(--muted); }
+    .mt { margin-top: 0.55em; }
+    .small { font-size: 0.6em !important; }
+  </style>
+</head>
+<body>
+<div class="reveal">
+<div class="slides">
+
+<!-- 1. タイトル -->
+<section class="slide-title">
+  <div class="title-deco"></div>
+  <h1>キャッシュ戦略</h1>
+  <div class="title-deco"></div>
+  <p class="subtitle">第 五 回</p>
+  <p class="text-muted mt" style="font-size:0.55em;">CDN / アプリ / DB キャッシュ ／ Read-Through / Write-Through ／ 整合性とのトレードオフ</p>
+</section>
+
+<!-- ── SECTION ── -->
+<section class="section-break">
+  <span class="section-num">Section 01</span>
+  <h2>キャッシュの基本</h2>
+  <p style="color:#475569; font-size:0.8em;">なぜキャッシュが必要か</p>
+</section>
+
+<!-- 2. キャッシュとは -->
+<section>
+  <h2>キャッシュとは？</h2>
+  <div class="highlight-box">
+    <strong>低速なストレージへのアクセスを減らすため、高速なストレージに結果を一時保存する仕組み。</strong><br>
+    「同じ計算・同じ問い合わせを繰り返さない」ことでシステム全体の応答速度とコストを改善する。
+  </div>
+
+  <div class="card-grid cols-3 mt">
+    <div class="card">
+      <div class="card-title">Cache Hit</div>
+      <p>キャッシュにデータが存在 → そのまま返す。DBアクセスなし。</p>
+      <p class="text-good" style="margin-top:0.3em;">→ 高速・低コスト</p>
+    </div>
+    <div class="card">
+      <div class="card-title">Cache Miss</div>
+      <p>キャッシュにデータがない → DBから取得してキャッシュに格納。</p>
+      <p class="text-warn" style="margin-top:0.3em;">→ 初回は遅い</p>
+    </div>
+    <div class="card">
+      <div class="card-title">TTL（有効期限）</div>
+      <p>キャッシュの生存時間。TTL 切れで自動削除され、次回アクセス時に再取得。</p>
+      <p class="text-muted" style="margin-top:0.3em; font-size:0.85em;">整合性とのトレードオフ</p>
+    </div>
+  </div>
+
+  <div class="warn-box mt">
+    ヒット率（Hit Rate）が低いキャッシュは逆効果になりうる。<br>
+    <strong>アクセス頻度が高く、データの変化が少ない</strong>ものがキャッシュに向いている。
+  </div>
+</section>
+
+<!-- 3. キャッシュの階層 -->
+<section>
+  <h2>キャッシュの階層</h2>
+  <div class="highlight-box">
+    キャッシュはシステムの<strong>複数の層</strong>に存在する。ユーザーに近いほど速く、容量は小さい。
+  </div>
+  <div class="cache-layers mt">
+    <div class="cache-layer">
+      <div class="cache-layer-label">ユーザーに近い ↑</div>
+      <div class="cache-layer-bar">
+        <span class="bar-name">ブラウザキャッシュ</span>
+        <span class="bar-meta">HTTP Cache-Control / ETag</span>
+      </div>
+    </div>
+    <div class="cache-layer">
+      <div class="cache-layer-label">CDN</div>
+      <div class="cache-layer-bar">
+        <span class="bar-name">エッジキャッシュ</span>
+        <span class="bar-meta">CloudFront, Fastly, Cloudflare</span>
+      </div>
+    </div>
+    <div class="cache-layer">
+      <div class="cache-layer-label">アプリ層</div>
+      <div class="cache-layer-bar">
+        <span class="bar-name">アプリケーションキャッシュ</span>
+        <span class="bar-meta">Redis, Memcached（インメモリ）</span>
+      </div>
+    </div>
+    <div class="cache-layer">
+      <div class="cache-layer-label">DB層</div>
+      <div class="cache-layer-bar">
+        <span class="bar-name">DBキャッシュ / クエリキャッシュ</span>
+        <span class="bar-meta">Buffer Pool, Query Cache</span>
+      </div>
+    </div>
+    <div class="cache-layer">
+      <div class="cache-layer-label">↓ データに近い</div>
+      <div class="cache-layer-bar">
+        <span class="bar-name">ストレージ（HDD / SSD）</span>
+        <span class="bar-meta">最終的な永続化先</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── SECTION ── -->
+<section class="section-break">
+  <span class="section-num">Section 02</span>
+  <h2>CDN / アプリ / DB キャッシュ</h2>
+  <p style="color:#475569; font-size:0.8em;">各層のキャッシュの役割と使い所</p>
+</section>
+
+<!-- 4. CDNキャッシュ -->
+<section>
+  <h2>CDN キャッシュ</h2>
+  <div class="highlight-box">
+    <strong>Content Delivery Network</strong>。世界中のエッジサーバーにコンテンツをキャッシュし、<br>
+    ユーザーの近くから配信することでレイテンシを削減する。
+  </div>
+  <div class="card-grid cols-2 mt">
+    <div>
+      <h3>向いているもの</h3>
+      <ul>
+        <li>静的ファイル（JS / CSS / 画像 / 動画）</li>
+        <li>更新頻度が低いHTMLページ</li>
+        <li>APIレスポンス（パブリックで変化が少ないもの）</li>
+      </ul>
+      <h3 style="margin-top:0.6em;">向いていないもの</h3>
+      <ul>
+        <li>ユーザーごとに異なるレスポンス（認証済みコンテンツ）</li>
+        <li>リアルタイム性が求められるデータ</li>
+      </ul>
+    </div>
+    <div>
+      <h3>仕組み</h3>
+      <div class="flow" style="flex-direction:column; align-items:flex-start; gap:0.4em;">
+        <div class="flow-box hit"><div class="fb-label">ユーザー</div></div>
+        <span class="flow-arrow">↓</span>
+        <div class="flow-box cache"><div class="fb-label">エッジサーバー（POP）</div><div class="fb-sub">Hit → そのまま返す</div></div>
+        <span class="flow-arrow">↓ Miss 時のみ</span>
+        <div class="flow-box miss"><div class="fb-label">オリジンサーバー</div><div class="fb-sub">取得してエッジにキャッシュ</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 5. アプリキャッシュ -->
+<section>
+  <h2>アプリケーションキャッシュ（Redis / Memcached）</h2>
+  <div class="highlight-box">
+    DB の前段にインメモリのキャッシュ層を置き、<strong>頻繁にアクセスされるデータをメモリ上に保持</strong>する。<br>
+    DBへのクエリ数を劇的に削減できる。
+  </div>
+  <div class="card-grid cols-2 mt">
+    <div class="card">
+      <div class="card-title">Redis</div>
+      <ul>
+        <li>String, Hash, List, Set, Sorted Set など多様なデータ型</li>
+        <li>TTL・パブサブ・Lua スクリプト対応</li>
+        <li>永続化オプションあり（RDB / AOF）</li>
+        <li>セッション、ランキング、レート制限にも使われる</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-title">Memcached</div>
+      <ul>
+        <li>シンプルな Key-Value のみ</li>
+        <li>マルチスレッドで高スループット</li>
+        <li>永続化なし・シンプルな用途向け</li>
+        <li>水平スケールが簡単</li>
+      </ul>
+    </div>
+  </div>
+  <div class="highlight-box mt">
+    <strong>どちらを選ぶか：</strong>データ構造の複雑さや永続化が必要なら <strong>Redis</strong>、<br>
+    シンプルな KV キャッシュを大量に捌くだけなら <strong>Memcached</strong>。
+  </div>
+</section>
+
+<!-- 6. DBキャッシュ -->
+<section>
+  <h2>DB キャッシュ</h2>
+  <div class="card-grid cols-2">
+    <div>
+      <h3>Buffer Pool（バッファプール）</h3>
+      <div class="highlight-box">
+        RDBMS がディスクのデータページをメモリ上に保持する内部キャッシュ。<br>
+        同じページへの再アクセスはディスク I/O をスキップできる。<br>
+        <strong>InnoDB buffer pool size</strong> を適切に設定することが DB チューニングの基本。
+      </div>
+      <h3 style="margin-top:0.5em;">クエリキャッシュ（非推奨）</h3>
+      <p>MySQL の旧機能。同じ SQL のレスポンスをキャッシュしたが、<br>テーブル更新時に全invalidationが必要で逆効果になりやすく、<strong>MySQL 8.0 で廃止</strong>。</p>
+    </div>
+    <div>
+      <h3>マテリアライズドビュー</h3>
+      <p>複雑な集計クエリの結果をテーブルとして事前に保存する。<br>
+      定期的に更新（リフレッシュ）することで、毎回の重いクエリを回避できる。</p>
+      <div class="warn-box mt">
+        ⚠️ リアルタイムではない。更新頻度とデータの鮮度はトレードオフ。
+      </div>
+      <h3 style="margin-top:0.5em;">Read Replica の活用</h3>
+      <p>レポート・分析クエリを Replica に向けることで、<br>Primary への書き込み負荷を隔離できる。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ── SECTION ── -->
+<section class="section-break">
+  <span class="section-num">Section 03</span>
+  <h2>キャッシュ戦略パターン</h2>
+  <p style="color:#475569; font-size:0.8em;">Read-Through / Write-Through / Write-Behind / Cache-Aside</p>
+</section>
+
+<!-- 7. Cache-Aside (Lazy Loading) -->
+<section>
+  <h2>Cache-Aside（Lazy Loading）</h2>
+  <div class="highlight-box">
+    アプリが<strong>自分でキャッシュを制御する</strong>パターン。最も広く使われる。
+  </div>
+  <div class="card-grid cols-2 mt">
+    <div>
+      <h3>読み取りフロー</h3>
+      <div class="flow" style="flex-direction:column; align-items:flex-start; gap:0.35em; font-size:0.62em;">
+        <div class="flow-box"><div class="fb-label">① アプリ → キャッシュを確認</div></div>
+        <div style="display:flex; gap:1em; margin-left:0.5em;">
+          <div>
+            <div style="color:var(--good); font-size:0.85em;">Hit ↓</div>
+            <div class="flow-box hit"><div class="fb-label">キャッシュから返す</div></div>
+          </div>
+          <div>
+            <div style="color:var(--warn); font-size:0.85em;">Miss ↓</div>
+            <div class="flow-box miss"><div class="fb-label">② DB から取得</div></div>
+            <div style="color:var(--muted); font-size:0.85em; margin:0.2em 0;">↓</div>
+            <div class="flow-box cache"><div class="fb-label">③ キャッシュに保存</div></div>
+            <div style="color:var(--muted); font-size:0.85em; margin:0.2em 0;">↓</div>
+            <div class="flow-box"><div class="fb-label">④ アプリへ返す</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <h3>特徴</h3>
+      <ul>
+        <li>実際に要求されたデータだけキャッシュされる（無駄が少ない）</li>
+        <li>キャッシュ障害時もDBに直接アクセスできる（耐障害性◎）</li>
+        <li>初回アクセス時は必ずキャッシュミスが発生（Cold Start）</li>
+      </ul>
+      <div class="warn-box mt">
+        ⚠️ 書き込み後にキャッシュを明示的に削除 or 更新しないと<strong>古いデータを返し続ける</strong>。
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 8. Read-Through -->
+<section>
+  <h2>Read-Through</h2>
+  <div class="highlight-box">
+    <strong>キャッシュ層自体がDBからの読み取りを担う</strong>パターン。<br>
+    アプリはキャッシュにしか問い合わせず、Miss 時の DB 取得はキャッシュ層が自動で行う。
+  </div>
+  <div class="card-grid cols-2 mt">
+    <div>
+      <div class="flow" style="flex-direction:column; align-items:flex-start; gap:0.35em; font-size:0.62em;">
+        <div class="flow-box"><div class="fb-label">アプリ</div></div>
+        <span class="flow-arrow">↓ 問い合わせ（常にキャッシュへ）</span>
+        <div class="flow-box cache"><div class="fb-label">キャッシュ層</div><div class="fb-sub">Hit → 即返す　Miss → DBへ</div></div>
+        <span class="flow-arrow">↓ Miss 時のみ自動取得</span>
+        <div class="flow-box miss"><div class="fb-label">DB</div></div>
+      </div>
+    </div>
+    <div>
+      <h3>Cache-Aside との違い</h3>
+      <table>
+        <tr><th></th><th>Cache-Aside</th><th>Read-Through</th></tr>
+        <tr><td>DB アクセス</td><td>アプリが担当</td><td>キャッシュ層が担当</td></tr>
+        <tr><td>コード量</td><td>多い</td><td>少ない</td></tr>
+        <tr><td>柔軟性</td><td>高い</td><td>キャッシュ実装に依存</td></tr>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- 9. Write-Through -->
+<section>
+  <h2>Write-Through</h2>
+  <div class="highlight-box">
+    <strong>書き込みをキャッシュと DB に同時に行う</strong>パターン。<br>
+    キャッシュは常にDBと同期されるため、データの鮮度が高い。
+  </div>
+  <div class="card-grid cols-2 mt">
+    <div>
+      <div class="flow" style="flex-direction:column; align-items:flex-start; gap:0.35em; font-size:0.62em;">
+        <div class="flow-box"><div class="fb-label">アプリ → 書き込みリクエスト</div></div>
+        <span class="flow-arrow">↓</span>
+        <div class="flow-box cache"><div class="fb-label">① キャッシュに書き込み</div></div>
+        <span class="flow-arrow">↓ 同期</span>
+        <div class="flow-box miss"><div class="fb-label">② DB にも書き込み</div></div>
+        <span class="flow-arrow">↓ 両方完了後</span>
+        <div class="flow-box hit"><div class="fb-label">完了を返す</div></div>
+      </div>
+    </div>
+    <div>
+      <h3>メリット / デメリット</h3>
+      <ul>
+        <li class="text-good">✅ キャッシュと DB が常に同期（整合性◎）</li>
+        <li class="text-good">✅ 読み取りは常にキャッシュから返せる</li>
+        <li class="text-warn" style="margin-top:0.3em;">⚠️ 書き込みが遅くなる（DB を待つ必要がある）</li>
+        <li class="text-warn">⚠️ 一度も読まれないデータもキャッシュに入る（無駄）</li>
+      </ul>
+      <div class="highlight-box mt">
+        Read-Through と組み合わせることで<br>読み書き両方をキャッシュ層に集約できる。
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 10. Write-Behind -->
+<section>
+  <h2>Write-Behind（Write-Back）</h2>
+  <div class="highlight-box">
+    <strong>キャッシュへの書き込みを先に完了させ、DB への書き込みを非同期で後から行う</strong>パターン。<br>
+    書き込みパフォーマンスを最大化できるが、整合性リスクを伴う。
+  </div>
+  <div class="card-grid cols-2 mt">
+    <div>
+      <div class="flow" style="flex-direction:column; align-items:flex-start; gap:0.35em; font-size:0.62em;">
+        <div class="flow-box"><div class="fb-label">アプリ → 書き込みリクエスト</div></div>
+        <span class="flow-arrow">↓</span>
+        <div class="flow-box cache"><div class="fb-label">① キャッシュに書き込み → 即 完了</div></div>
+        <span class="flow-arrow">↓ 非同期（バッチ or キュー）</span>
+        <div class="flow-box miss"><div class="fb-label">② DB に非同期書き込み</div></div>
+      </div>
+    </div>
+    <div>
+      <h3>メリット / デメリット</h3>
+      <ul>
+        <li class="text-good">✅ 書き込みレイテンシが非常に低い</li>
+        <li class="text-good">✅ DB への書き込みをバッチ化してスループット向上</li>
+        <li class="text-warn" style="margin-top:0.3em;">⚠️ キャッシュ障害時にDBに未反映のデータが消える</li>
+        <li class="text-warn">⚠️ 整合性の保証が難しい</li>
+      </ul>
+      <div class="warn-box mt">
+        データロストのリスクがあるため、<strong>多少のデータ損失が許容できる</strong>ユースケース（閲覧数・いいね数など）に限定するのが安全。
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 11. 戦略比較表 -->
+<section>
+  <h2>キャッシュ戦略 — まとめ比較</h2>
+  <table>
+    <tr>
+      <th>戦略</th>
+      <th>読み取り</th>
+      <th>書き込み</th>
+      <th>整合性</th>
+      <th>向いている用途</th>
+    </tr>
+    <tr>
+      <td>Cache-Aside</td>
+      <td>アプリが制御</td>
+      <td>DBのみ（手動 invalidate）</td>
+      <td>△</td>
+      <td>汎用。読み取り多めのAPI</td>
+    </tr>
+    <tr>
+      <td>Read-Through</td>
+      <td>キャッシュ経由で自動</td>
+      <td>DBのみ</td>
+      <td>△</td>
+      <td>読み取り重視・コード簡略化</td>
+    </tr>
+    <tr>
+      <td>Write-Through</td>
+      <td>キャッシュから返す</td>
+      <td>Cache + DB 同期</td>
+      <td>◎</td>
+      <td>整合性重視・読み書きバランス</td>
+    </tr>
+    <tr>
+      <td>Write-Behind</td>
+      <td>キャッシュから返す</td>
+      <td>Cache 先書き・DB 非同期</td>
+      <td>△〜✕</td>
+      <td>書き込みスループット最優先</td>
+    </tr>
+  </table>
+</section>
+
+<!-- ── SECTION ── -->
+<section class="section-break">
+  <span class="section-num">Section 04</span>
+  <h2>整合性とのトレードオフ</h2>
+  <p style="color:#475569; font-size:0.8em;">キャッシュの最大の難所</p>
+</section>
+
+<!-- 12. キャッシュ無効化問題 -->
+<section>
+  <h2>キャッシュ無効化（Cache Invalidation）</h2>
+  <div class="highlight-box">
+    コンピュータサイエンスの有名な格言：<br>
+    <strong>「難しい問題は2つしかない。キャッシュの無効化と、名前付けだ」</strong><br>
+    <span class="text-muted" style="font-size:0.85em;">— Phil Karlton</span>
+  </div>
+  <div class="card-grid cols-3 mt">
+    <div class="card">
+      <div class="card-title">TTL ベース</div>
+      <p>一定時間後に自動削除。シンプルだが、TTL 中はデータが古いまま。</p>
+      <p class="text-muted" style="margin-top:0.3em; font-size:0.6em;">許容できる staleness を決めて TTL を設定する。</p>
+    </div>
+    <div class="card">
+      <div class="card-title">イベントドリブン</div>
+      <p>DBが更新されたタイミングでキャッシュを即 削除 or 更新する。</p>
+      <p class="text-muted" style="margin-top:0.3em; font-size:0.6em;">整合性◎だが実装が複雑。更新漏れのリスクがある。</p>
+    </div>
+    <div class="card">
+      <div class="card-title">バージョニング</div>
+      <p>キャッシュキーにバージョン番号を含める。古いキーは自然に使われなくなる。</p>
+      <p class="text-muted" style="margin-top:0.3em; font-size:0.6em;">削除不要だが古いキーがメモリを占有する。</p>
+    </div>
+  </div>
+  <div class="warn-box mt">
+    ⚠️ <strong>Cache Stampede（キャッシュスタンピード）</strong>：TTL 切れ直後に大量リクエストが同時に DB へ殺到する現象。<br>
+    対策：確率的 TTL 延長（Probabilistic Early Expiration）や Mutex ロック。
+  </div>
+</section>
+
+<!-- 13. 整合性レベルの選択 -->
+<section>
+  <h2>整合性レベルの選択</h2>
+  <div class="highlight-box">
+    <strong>強整合性とキャッシュの高速化は基本的にトレードオフ。</strong><br>
+    ユースケースごとに「どこまで古いデータを許容できるか」を判断する。
+  </div>
+  <table class="mt">
+    <tr>
+      <th>整合性レベル</th>
+      <th>概要</th>
+      <th>向いている例</th>
+    </tr>
+    <tr>
+      <td>強整合性</td>
+      <td>常に最新データを返す。キャッシュを使わない or 即時無効化。</td>
+      <td>残高照会・在庫確認・決済</td>
+    </tr>
+    <tr>
+      <td>結果整合性</td>
+      <td>しばらくすれば最新になる。TTL ベースで十分なケースが多い。</td>
+      <td>SNS タイムライン・商品説明</td>
+    </tr>
+    <tr>
+      <td>ゆるい整合性</td>
+      <td>多少古くても問題ない。長い TTL やバッチ更新で OK。</td>
+      <td>PV数・いいね数・ランキング</td>
+    </tr>
+  </table>
+  <div class="highlight-box mt">
+    設計の問いは「キャッシュするか否か」ではなく、<br>
+    <strong>「このデータは何秒古くても許容されるか」</strong>。
+  </div>
+</section>
+
+<!-- まとめ -->
+<section class="slide-title">
+  <div class="title-deco"></div>
+  <h1 style="font-size:1.5em;">まとめ</h1>
+  <div class="title-deco"></div>
+  <div style="text-align:left; margin-top:1em; display:grid; grid-template-columns:1fr 1fr; gap:0.8em; font-size:0.65em;">
+    <div class="card">
+      <div class="card-title">キャッシュの基本</div>
+      <p>低速ストレージへのアクセスを減らす仕組み。<br>ヒット率が高く変化の少ないデータに有効。</p>
+    </div>
+    <div class="card">
+      <div class="card-title">キャッシュの階層</div>
+      <p>ブラウザ → CDN → アプリ（Redis）→ DB の順。<br>ユーザーに近いほど速いが、容量は小さい。</p>
+    </div>
+    <div class="card">
+      <div class="card-title">書き込み戦略</div>
+      <p>整合性重視 → Write-Through。<br>スループット重視 → Write-Behind。<br>汎用 → Cache-Aside。</p>
+    </div>
+    <div class="card">
+      <div class="card-title">整合性とのトレードオフ</div>
+      <p>「何秒古くても許容できるか」を決めてから設計する。<br>Cache Stampede 対策も忘れずに。</p>
+    </div>
+  </div>
+</section>
+
+</div>
+</div>
+<script src="node_modules/reveal.js/dist/reveal.js"></script>
+<script>
+  Reveal.initialize({
+    hash: true,
+    slideNumber: 'c/t',
+    transition: 'slide',
+    transitionSpeed: 'fast',
+    backgroundTransition: 'fade',
+    controls: true,
+    progress: true,
+    center: true,
+    width: 1280,
+    height: 720,
+    margin: 0.04,
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,901 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>システム設計 勉強会 第二回</title>
+  <link rel="stylesheet" href="node_modules/reveal.js/dist/reset.css">
+  <link rel="stylesheet" href="node_modules/reveal.js/dist/reveal.css">
+  <link rel="stylesheet" href="node_modules/reveal.js/dist/theme/night.css">
+  <style>
+    :root {
+      --accent: #e2e8f0;
+      --dim:    #94a3b8;
+      --muted:  #475569;
+      --warn:   #f59e0b;
+      --good:   #4ade80;
+      --line:   rgba(255,255,255,0.1);
+    }
+
+    .reveal {
+      font-family: 'Segoe UI', 'Hiragino Sans', 'Meiryo', sans-serif;
+      background: #0a0a0a;
+    }
+    .reveal .slide-background { background: #0a0a0a; }
+
+    /* タイトル・セクションブレイク */
+    .slide-title h1 {
+      font-size: 2.4em;
+      font-weight: 300;
+      color: #fff;
+      letter-spacing: 0.06em;
+      border: none !important;
+    }
+    .slide-title .subtitle {
+      color: var(--dim);
+      font-size: 0.85em;
+      letter-spacing: 0.25em;
+      margin-top: 0.8em;
+    }
+    .title-deco {
+      width: 40px; height: 1px;
+      background: var(--muted);
+      margin: 1.2em auto;
+    }
+
+    .section-break h2 {
+      font-size: 2em;
+      font-weight: 300;
+      color: #fff;
+      border: none !important;
+    }
+    .section-num {
+      display: block;
+      font-size: 0.45em;
+      color: var(--muted);
+      letter-spacing: 0.35em;
+      text-transform: uppercase;
+      margin-bottom: 0.6em;
+    }
+
+    /* 共通見出し */
+    .reveal h2 {
+      font-size: 1.15em;
+      font-weight: 400;
+      color: #fff;
+      border-bottom: 1px solid var(--line) !important;
+      padding-bottom: 0.35em;
+      margin-bottom: 0.7em;
+      text-align: left;
+    }
+    .reveal h3 {
+      font-size: 0.85em;
+      font-weight: 600;
+      color: var(--accent);
+      margin-bottom: 0.3em;
+    }
+    .reveal p, .reveal li {
+      font-size: 0.7em;
+      line-height: 1.75;
+      color: #b0b8c8;
+      text-align: left;
+    }
+    .reveal ul { margin-left: 1.2em; }
+    .reveal ul li { margin-bottom: 0.15em; }
+
+    /* カードグリッド */
+    .card-grid { display: grid; gap: 0.7em; }
+    .card-grid.cols-2 { grid-template-columns: 1fr 1fr; }
+    .card-grid.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      padding: 0.75em 0.9em;
+    }
+    .card .card-title {
+      font-size: 0.75em;
+      font-weight: 600;
+      color: #fff;
+      margin-bottom: 0.35em;
+    }
+    .card p, .card li { font-size: 0.63em; color: #94a3b8; }
+    .card-icon { margin-right: 0.25em; }
+
+    /* テーブル */
+    .reveal table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.63em;
+      margin: 0.4em 0;
+    }
+    .reveal table th {
+      color: var(--dim);
+      padding: 0.5em 0.8em;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      font-weight: 600;
+      font-size: 0.9em;
+      letter-spacing: 0.05em;
+    }
+    .reveal table td {
+      padding: 0.45em 0.8em;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      color: #b0b8c8;
+      vertical-align: top;
+    }
+    .reveal table td:first-child {
+      color: #fff;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+
+    /* ハイライトボックス */
+    .highlight-box {
+      border-left: 2px solid var(--dim);
+      padding: 0.55em 0.9em;
+      margin: 0.5em 0;
+      font-size: 0.72em;
+      color: #b0b8c8;
+    }
+    .highlight-box strong { color: #fff; }
+
+    .warn-box {
+      border-left: 2px solid var(--warn);
+      padding: 0.55em 0.9em;
+      margin: 0.5em 0;
+      font-size: 0.68em;
+      color: #b0b8c8;
+    }
+
+    /* バッジ */
+    .badge {
+      display: inline-block;
+      border: 1px solid var(--muted);
+      border-radius: 3px;
+      padding: 0.05em 0.45em;
+      font-size: 0.55em;
+      color: var(--dim);
+      vertical-align: middle;
+      margin-right: 0.4em;
+    }
+
+    /* 責任共有モデル図 */
+    .layers { display: flex; flex-direction: column; gap: 0.25em; font-size: 0.62em; }
+    .layer-cell {
+      padding: 0.4em 0.7em;
+      text-align: center;
+      border-radius: 3px;
+      font-size: 0.95em;
+    }
+    .owner-user   { background: rgba(74,222,128,0.08);  color: #86efac; border: 1px solid rgba(74,222,128,0.2); }
+    .owner-vendor { background: rgba(148,163,184,0.08); color: #94a3b8; border: 1px solid rgba(148,163,184,0.2); }
+
+    /* ステップフロー */
+    .step-flow { display: flex; align-items: stretch; font-size: 0.62em; gap: 0; }
+    .step {
+      flex: 1;
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      padding: 0.7em 0.5em;
+      text-align: center;
+      position: relative;
+    }
+    .step + .step { margin-left: 1.4em; }
+    .step + .step::before {
+      content: '→';
+      position: absolute;
+      left: -1.1em;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--muted);
+    }
+    .step .step-num {
+      font-size: 1.3em;
+      font-weight: 300;
+      color: #fff;
+      display: block;
+      margin-bottom: 0.2em;
+    }
+    .step p { margin: 0; font-size: 0.88em; color: #94a3b8; }
+
+    /* ユーティリティ */
+    .text-accent { color: #fff; }
+    .text-warn   { color: var(--warn); }
+    .text-good   { color: var(--good); }
+    .text-muted  { color: var(--muted); }
+    .mt { margin-top: 0.55em; }
+    .small { font-size: 0.6em !important; }
+  </style>
+</head>
+<body>
+<div class="reveal">
+<div class="slides">
+
+<!-- ========================================
+     1. TITLE
+     ======================================== -->
+<section class="slide-title" data-background-gradient="radial-gradient(ellipse at 30% 50%, #1a3a5c 0%, #0d1b2a 70%)">
+  <div class="title-deco"></div>
+  <h1>システム設計</h1>
+  <h1>勉強会</h1>
+  <div class="title-deco"></div>
+  <p class="subtitle">第 二 回</p>
+  <p class="text-muted mt" style="font-size:0.55em;">クラウド設計・マネージドサービス・移行パターン</p>
+</section>
+
+<!-- ========================================
+     SECTION BREAK: オンプレ vs クラウド
+     ======================================== -->
+<section class="section-break">
+  <span class="section-num">Section 01</span>
+  <h2>オンプレ vs クラウド</h2>
+  <p style="color:#aaa; font-size:0.8em;">システムを「所有する時代」から「利用する時代」へ</p>
+</section>
+
+<!-- ========================================
+     2. オンプレとクラウドの本質的な違い
+     ======================================== -->
+<section>
+  <h2>オンプレとクラウドの本質的な違い</h2>
+  <div class="card-grid cols-2">
+    <div class="card">
+      <div class="card-title"><span class="card-icon">🏢</span> オンプレミス</div>
+      <p><strong class="text-accent">「所有」</strong></p>
+      <ul>
+        <li>設備・機材を自前で用意し設置して利用</li>
+        <li>2010年前半まで主流</li>
+        <li>全て自社でコントロール可能</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="card-icon">☁️</span> クラウド</div>
+      <p><strong class="text-accent">「利用」</strong></p>
+      <ul>
+        <li>SaaS / PaaS / IaaS として提供されるものを活用</li>
+        <li>現在はクラウド／ハイブリッドが主流</li>
+        <li>使った分だけ支払い</li>
+      </ul>
+    </div>
+  </div>
+  <div class="highlight-box mt">
+    世の中のシステムは <strong>「オンプレ」か「クラウド」</strong> のどちらかで稼働している。<br>
+    両者の本質的な違いは <strong>所有 vs 利用</strong> の考え方にある。
+  </div>
+</section>
+
+<!-- ========================================
+     3. クラウド移行が増加する理由（課題）
+     ======================================== -->
+<section>
+  <h2>オンプレ → クラウド移行が増える理由</h2>
+  <div class="card-grid cols-2">
+    <div>
+      <h3>🏗️ インフラの制約</h3>
+      <ul>
+        <li>設備設置スペースが必要</li>
+        <li>CPU は後から変更不可 → 追加費用で買い直し</li>
+        <li>トラフィック増加への対応が困難</li>
+        <li>ネットワーク機器の専門知識が必要（CCNA 等）</li>
+      </ul>
+    </div>
+    <div>
+      <h3>⚙️ 運用の重さ</h3>
+      <ul>
+        <li>物理故障 → 機器交換が必要</li>
+        <li>設備のメンテナンス・監視要員が必要（24/7）</li>
+        <li>設備廃棄は数千万円〜億円単位のコスト</li>
+        <li>非機能要件を物理設備の設計に落とし込む複雑さ</li>
+      </ul>
+    </div>
+  </div>
+  <div class="warn-box mt">
+    ⚠️ 冗長化コストが爆発する：サーバー数十〜数百台調達、UPS・発電設備、複数系統の電源・回線引き込み…<br>
+    SLA を 99% → 99.9% → 99.99% と高めるたびに指数関数的にコストが増加。
+  </div>
+</section>
+
+<!-- ========================================
+     4. 比較表
+     ======================================== -->
+<section>
+  <h2>オンプレ vs クラウド — 比較</h2>
+  <table>
+    <tr>
+      <th></th>
+      <th>🏢 オンプレ</th>
+      <th>☁️ クラウド</th>
+    </tr>
+    <tr>
+      <td>初期コスト</td>
+      <td>極めて高い（数千万円↑）</td>
+      <td>0 円（Pay-as-You-Go）</td>
+    </tr>
+    <tr>
+      <td>スケーラビリティ</td>
+      <td>手動・物理的制約</td>
+      <td>自動・論理的拡張</td>
+    </tr>
+    <tr>
+      <td>調達速度</td>
+      <td>遅い（設置まで含むと数週間）</td>
+      <td>速い（数分〜数時間）</td>
+    </tr>
+    <tr>
+      <td>障害対応</td>
+      <td>自前・フルスタック</td>
+      <td>サービス依存・抽象化<br><span class="text-muted">（責任共有モデルに基づく）</span></td>
+    </tr>
+  </table>
+</section>
+
+<!-- ========================================
+     SECTION BREAK: クラウド設計
+     ======================================== -->
+<section class="section-break">
+  <span class="section-num">Section 02</span>
+  <h2>クラウド設計の考え方</h2>
+  <p style="color:#aaa; font-size:0.8em;">Design for Failure / Well-Architected Framework</p>
+</section>
+
+<!-- ========================================
+     5. クラウド設計とは
+     ======================================== -->
+<section>
+  <h2>クラウド設計とは？</h2>
+  <div class="highlight-box">
+    <strong>「動くものを作る」</strong> から <strong>「変化に強い仕組みを作る」</strong> へ
+  </div>
+  <div class="card-grid cols-2 mt">
+    <div class="card">
+      <div class="card-title">🏚️ 従来（オンプレ）の設計思想</div>
+      <p>ピーク時に耐えられる <strong>「最大サイズ」</strong> を<strong>固定</strong>で設計する</p>
+      <p class="text-muted">→ 常時オーバースペックで無駄が多い</p>
+    </div>
+    <div class="card">
+      <div class="card-title">☁️ クラウドの設計思想</div>
+      <p>需要に合わせて <strong>「伸び縮み」</strong> し、<br>失敗しても <strong>「すぐにやり直せる」</strong> 設計</p>
+      <p class="text-muted">→ 無駄ゼロ・回復力重視</p>
+    </div>
+  </div>
+  <div class="card-grid cols-2 mt">
+    <div class="card">
+      <div class="card-title">💥 Design for Failure</div>
+      <p>「サーバーはいつか必ず壊れる」と考え、<br>1台が死んでもサービスを止めない仕組みを<strong>最初から</strong>組み込む</p>
+    </div>
+    <div class="card">
+      <div class="card-title">🔗 疎結合（Loose Coupling）</div>
+      <p>DB・認証・アプリを独立させ、一部の変更が全体に影響しない構造にする</p>
+    </div>
+  </div>
+</section>
+
+<!-- ========================================
+     6. クラウド設計の5大原則
+     ======================================== -->
+<section>
+  <h2>クラウド設計の5大原則</h2>
+  <p class="text-muted small">AWS Well-Architected Framework の視点</p>
+  <table>
+    <tr>
+      <th>柱</th>
+      <th>ポイント</th>
+    </tr>
+    <tr>
+      <td>⚙️ 運用性</td>
+      <td>手作業を減らし、コードでインフラを管理する（<strong>IaC</strong>）</td>
+    </tr>
+    <tr>
+      <td>🔒 セキュリティ</td>
+      <td>全レイヤーで防御し、権限は <strong>「最小限」</strong> だけ与える</td>
+    </tr>
+    <tr>
+      <td>✅ 信頼性</td>
+      <td>障害からの <strong>自動復旧</strong> と、データの <strong>多重化</strong></td>
+    </tr>
+    <tr>
+      <td>⚡ パフォーマンス</td>
+      <td>マネージドサービスを使い、負荷に応じて <strong>自動拡張</strong> する</td>
+    </tr>
+    <tr>
+      <td>💰 コスト最適化</td>
+      <td>不要なリソースを止め、<strong>使った分だけ払う</strong> 仕組み</td>
+    </tr>
+  </table>
+</section>
+
+<!-- ========================================
+     SECTION BREAK: マネージドサービス
+     ======================================== -->
+<section class="section-break">
+  <span class="section-num">Section 03</span>
+  <h2>マネージドサービス</h2>
+  <p style="color:#aaa; font-size:0.8em;">「餅は餅屋へ」— インフラ管理を手放す</p>
+</section>
+
+<!-- ========================================
+     7. マネージドサービスとは
+     ======================================== -->
+<section>
+  <h2>マネージドサービスとは？</h2>
+  <div class="highlight-box">
+    クラウドベンダーがインフラの <strong>構築・運用・保守</strong> を「肩代わり」してくれるサービス。<br>
+    利用者は <strong>「アプリ開発」</strong> だけに専念できる。
+  </div>
+  <div class="card-grid cols-2 mt">
+    <div class="card">
+      <div class="card-title">😓 セルフマネージド（自前）</div>
+      <p>利用者がやること：</p>
+      <ul>
+        <li>OS パッチ当て</li>
+        <li>バックアップ設計・実行</li>
+        <li>冗長化構成</li>
+        <li>セキュリティ更新</li>
+        <li>ハード故障対応</li>
+        <li>キャパシティ設計</li>
+      </ul>
+      <p class="text-warn" style="font-size:0.65em;">= 膨大な「作業」</p>
+    </div>
+    <div class="card">
+      <div class="card-title">😊 マネージドサービス</div>
+      <p>利用者がやること：</p>
+      <ul>
+        <li>データ投入</li>
+        <li>コード実行</li>
+        <li>設定の最適化</li>
+      </ul>
+      <p class="text-good" style="font-size:0.65em; margin-top:0.5em;">ベンダーがやること：<br>上記の「作業」をすべて担う</p>
+    </div>
+  </div>
+</section>
+
+<!-- ========================================
+     8. マネージドサービスの価値
+     ======================================== -->
+<section>
+  <h2>マネージドサービスの価値</h2>
+  <p class="text-muted small">「守り」の自動化と「攻め」の高速化</p>
+  <table>
+    <tr>
+      <th></th>
+      <th>メリット</th>
+    </tr>
+    <tr>
+      <td>⚡ スピード</td>
+      <td>数クリック・数分でエンタープライズ級の環境が整う</td>
+    </tr>
+    <tr>
+      <td>✅ 信頼性</td>
+      <td>自動バックアップ、マルチ AZ 配置による高可用性が<strong>標準</strong></td>
+    </tr>
+    <tr>
+      <td>📈 スケーラビリティ</td>
+      <td>アクセス増に応じて自動拡張（オートスケール）</td>
+    </tr>
+    <tr>
+      <td>💰 コスト最適化</td>
+      <td>使った分だけの従量課金</td>
+    </tr>
+  </table>
+</section>
+
+<!-- ========================================
+     9. クラウドネイティブへの進化
+     ======================================== -->
+<section>
+  <h2>クラウドネイティブな設計への進化</h2>
+  <p class="text-muted small">「サーバー」を意識しない設計（Serverless & Managed）</p>
+  <div class="step-flow mt">
+    <div class="step">
+      <span class="step-num">Lv.1</span>
+      <p>物理サーバー<br>↓<br>仮想サーバー<br><span class="text-accent">(EC2等)</span></p>
+    </div>
+    <div class="step">
+      <span class="step-num">Lv.2</span>
+      <p>DB・キャッシュを<br>マネージドに<br><span class="text-accent">(RDS等)</span></p>
+    </div>
+    <div class="step">
+      <span class="step-num">Lv.3</span>
+      <p>サーバーの<br>存在すら意識しない<br><span class="text-accent">サーバーレス (Lambda等)</span></p>
+    </div>
+  </div>
+  <div class="highlight-box mt">
+    設計者の役割が変わる：<br>
+    <strong>「メモリやディスクの計算」</strong> →
+    <strong>「どのサービスとどのサービスを組み合わせると最大にビジネス価値を生み出せるか」</strong><br>
+    <span class="text-muted">（サービスのオーケストレーション）</span>
+  </div>
+</section>
+
+<!-- ========================================
+     10. マネージドサービスの思想
+     ======================================== -->
+<section>
+  <h2>マネージドサービスの思想</h2>
+  <div class="highlight-box">
+    <strong>「餅は餅屋へ」</strong> — 付加価値を生まない作業からの脱却
+  </div>
+  <div class="card-grid cols-2 mt">
+    <div class="card">
+      <div class="card-title">🚫 Undifferentiated Heavy Lifting</div>
+      <p>設備調達・メンテ・物理障害対応は<br><strong>ビジネスの成功に直接貢献しない</strong></p>
+      <p class="text-muted" style="margin-top:0.4em;">→ これらをクラウドベンダーに丸投げし、<br>自社リソースを「独自の価値」に集中させる</p>
+    </div>
+    <div class="card">
+      <div class="card-title">⚖️ 責任共有モデルの理解</div>
+      <p>インフラの可用性・セキュリティの「土台」は<strong>ベンダーが保証</strong></p>
+      <p>ユーザーは「その上のデータと設定」に責任を持つ</p>
+    </div>
+  </div>
+</section>
+
+<!-- ========================================
+     SECTION BREAK: 責任共有モデル
+     ======================================== -->
+<section class="section-break">
+  <span class="section-num">Section 04</span>
+  <h2>責任共有モデル</h2>
+  <p style="color:#aaa; font-size:0.8em;">「物理」はベンダー、「データ」は自分</p>
+</section>
+
+<!-- ========================================
+     11. 責任共有モデルとは
+     ======================================== -->
+<section>
+  <h2>責任共有モデルとは？</h2>
+  <div class="highlight-box">
+    <strong>「どこまでがクラウド側の責任で、どこからが自分の責任か」</strong> を明確にするルール
+  </div>
+  <div class="card-grid cols-2 mt">
+    <div class="card">
+      <div class="card-title">☁️ ベンダーの責任</div>
+      <p><strong>「クラウドのセキュリティ」</strong><br>（インフラ自体）</p>
+      <ul>
+        <li>データセンターの物理保護</li>
+        <li>ハードウェア・ネットワーク基盤</li>
+        <li>仮想化レイヤー</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-title">👤 ユーザーの責任</div>
+      <p><strong>「クラウド内のセキュリティ」</strong><br>（データと設定）</p>
+      <ul>
+        <li>データの暗号化</li>
+        <li>アクセス権限の設定</li>
+        <li>ファイアウォール設定</li>
+      </ul>
+    </div>
+  </div>
+  <div class="warn-box mt">
+    ⚠️ 責任の所在が曖昧だと → パッチ当ての漏れ・設定ミスによる <strong>情報漏洩</strong> に繋がる
+  </div>
+</section>
+
+<!-- ========================================
+     12. 責任の境界線（テーブル）
+     ======================================== -->
+<section>
+  <h2>責任の境界線</h2>
+  <table>
+    <tr>
+      <th>担当箇所</th>
+      <th>☁️ ベンダー責任</th>
+      <th>👤 ユーザー責任</th>
+    </tr>
+    <tr>
+      <td>インフラ</td>
+      <td>データセンターの物理保護、サーバーの故障交換</td>
+      <td class="text-muted">—</td>
+    </tr>
+    <tr>
+      <td>ネットワーク</td>
+      <td>物理ネットワークの維持、仮想化基盤の防御</td>
+      <td>ファイアウォールの設定、通信の暗号化</td>
+    </tr>
+    <tr>
+      <td>OS・ソフト</td>
+      <td>マネージドサービスの場合のパッチ当て</td>
+      <td>仮想サーバー（EC2等）の OS アップデート</td>
+    </tr>
+    <tr>
+      <td>データ</td>
+      <td class="text-muted">—</td>
+      <td>データの暗号化、バックアップ、権限管理</td>
+    </tr>
+  </table>
+</section>
+
+<!-- ========================================
+     13. サービス形態による責任範囲の変化
+     ======================================== -->
+<section>
+  <h2>サービス形態による責任範囲の変化</h2>
+  <p class="text-muted small">マネージドサービスを使うほど、ユーザーの「責任（苦労）」は減る</p>
+
+  <div class="layers mt">
+    <!-- Header -->
+    <div style="display:grid; grid-template-columns:90px 1fr 1fr; gap:0.3em; font-size:0.55em; color:#888; margin-bottom:0.2em;">
+      <div></div>
+      <div style="text-align:center; color: var(--accent2);">☁️ ベンダー管理</div>
+      <div style="text-align:center; color: var(--good);">👤 ユーザー管理</div>
+    </div>
+
+    <!-- Rows -->
+    <div style="display:grid; grid-template-columns:90px 1fr 1fr; gap:0.3em; font-size:0.58em; align-items:center;">
+      <div style="color:#aaa; text-align:right; padding-right:0.5em;">オンプレ</div>
+      <div class="layer-cell owner-user" style="grid-column:2/4;">空調・電源・HW・ネットワーク・OS・ミドルウェア・アプリ・データ（<strong>すべて自分</strong>）</div>
+    </div>
+    <div style="display:grid; grid-template-columns:90px 1fr 1fr; gap:0.3em; font-size:0.58em; align-items:center;">
+      <div style="color:#aaa; text-align:right; padding-right:0.5em;">IaaS</div>
+      <div class="layer-cell owner-vendor">空調・電源・HW・ネットワーク・仮想化</div>
+      <div class="layer-cell owner-user">OS・ミドルウェア・アプリ・データ</div>
+    </div>
+    <div style="display:grid; grid-template-columns:90px 1fr 1fr; gap:0.3em; font-size:0.58em; align-items:center;">
+      <div style="color:#aaa; text-align:right; padding-right:0.5em;">PaaS / Managed</div>
+      <div class="layer-cell owner-vendor" style="grid-column:2/3;">〜 OS・ミドルウェアまで</div>
+      <div class="layer-cell owner-user">アプリ・データ・設定</div>
+    </div>
+    <div style="display:grid; grid-template-columns:90px 1fr 1fr; gap:0.3em; font-size:0.58em; align-items:center;">
+      <div style="color:#aaa; text-align:right; padding-right:0.5em;">SaaS</div>
+      <div class="layer-cell owner-vendor" style="grid-column:2/3;">〜 アプリまでほぼすべて</div>
+      <div class="layer-cell owner-user">ID・データのみ</div>
+    </div>
+  </div>
+
+  <div class="highlight-box mt" style="font-size:0.65em;">
+    💡 ビジネスに集中したいなら、責任範囲をベンダーに委ねるほど良い<br>
+    → より多くのマネージドサービスを積極的に活用する設計を目指すべき
+  </div>
+</section>
+
+<!-- ========================================
+     SECTION BREAK: 6R
+     ======================================== -->
+<section class="section-break">
+  <span class="section-num">Section 05</span>
+  <h2>クラウド移行パターン（6R）</h2>
+  <p style="color:#aaa; font-size:0.8em;">移行の目的に合わせて最適な手法を選ぶ</p>
+</section>
+
+<!-- ========================================
+     14. 6R 概要
+     ======================================== -->
+<section>
+  <h2>クラウドへの移行パターン（6R）</h2>
+  <div class="highlight-box" style="font-size:0.65em;">
+    クラウド移行は単にサーバーを移すことではなく、<strong>ビジネスの目的</strong>（コスト削減・スピード向上・拡張性など）に合わせて<strong>最適な手法を選択するプロセス</strong>。
+  </div>
+  <div class="card-grid cols-3 mt">
+    <div class="card">
+      <div class="card-title">🚀 Rehost</div>
+      <p>そのまま移す</p>
+    </div>
+    <div class="card">
+      <div class="card-title">⚙️ Replatform</div>
+      <p>少し最適化して移す</p>
+    </div>
+    <div class="card">
+      <div class="card-title">🔧 Refactor</div>
+      <p>抜本的に作り直す</p>
+    </div>
+    <div class="card">
+      <div class="card-title">🛒 Repurchase</div>
+      <p>別製品に乗り換える</p>
+    </div>
+    <div class="card">
+      <div class="card-title">🗑️ Retire</div>
+      <p>廃止する</p>
+    </div>
+    <div class="card">
+      <div class="card-title">🛡️ Retain</div>
+      <p>維持（移行しない）</p>
+    </div>
+  </div>
+</section>
+
+<!-- ========================================
+     15. Rehost
+     ======================================== -->
+<section>
+  <h2><span class="badge">6R-1</span> Rehost — 「そのまま」持っていく</h2>
+  <div class="highlight-box">
+    最短・最速のクラウド化。OSやアプリを<strong>構成変更せず</strong>、そのままクラウド（EC2等）へ移設。
+  </div>
+  <div class="card-grid cols-2 mt">
+    <div class="card">
+      <div class="card-title">✅ メリット</div>
+      <ul>
+        <li>移行スピードが<strong>最も速く</strong>、リスクが低い</li>
+        <li>データセンター撤去期限がある場合に最適</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-title">🎯 使い所</div>
+      <ul>
+        <li>複雑すぎて中身をいじれない<strong>レガシーシステム</strong></li>
+        <li>まずクラウドに乗せてから最適化したい場合</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ========================================
+     16. Replatform
+     ======================================== -->
+<section>
+  <h2><span class="badge">6R-2</span> Replatform — 「少しだけ」変える</h2>
+  <div class="highlight-box">
+    コアを変えずに恩恵を受ける。アプリの根幹は変えず、<strong>DB等をマネージドサービス（RDS等）</strong>に置き換える。
+  </div>
+  <div class="card-grid cols-2 mt">
+    <div class="card">
+      <div class="card-title">✅ メリット</div>
+      <ul>
+        <li>OS・DB のパッチ当て、バックアップ運用から解放</li>
+        <li>アプリ改修を最小限に抑えつつクラウドの恩恵を享受</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-title">🎯 使い所</div>
+      <ul>
+        <li>運用の手間を減らしたいが</li>
+        <li>アプリを大規模改修する<strong>予算や時間がない</strong>場合</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ========================================
+     17. Refactor/Re-architect
+     ======================================== -->
+<section>
+  <h2><span class="badge">6R-3</span> Refactor — 「作り変える」</h2>
+  <div class="highlight-box">
+    クラウドネイティブの真髄。クラウドの機能をフル活用するため、<br>
+    アプリの構造（<strong>マイクロサービス化・サーバーレス化</strong>）を抜本的に見直す。
+  </div>
+  <div class="card-grid cols-2 mt">
+    <div class="card">
+      <div class="card-title">✅ メリット</div>
+      <ul>
+        <li>スケーラビリティ・耐障害性・コスト効率が<strong>最大化</strong></li>
+        <li>ビジネスの変化に極めて強い基盤になる</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-title">🎯 使い所</div>
+      <ul>
+        <li>今後も継続的に機能追加が必要な</li>
+        <li><strong>自社の競争力の源泉</strong>となる戦略的システム</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ========================================
+     18. Repurchase
+     ======================================== -->
+<section>
+  <h2><span class="badge">6R-4</span> Repurchase — 「買い替える」</h2>
+  <div class="highlight-box">
+    所有から利用への完全転換。既存ソフトを捨て、<strong>SaaS（Salesforce, Microsoft 365 等）</strong>へ乗り換える。
+  </div>
+  <div class="card-grid cols-2 mt">
+    <div class="card">
+      <div class="card-title">✅ メリット</div>
+      <ul>
+        <li>サーバー管理・アプリ開発が<strong>不要</strong>になる</li>
+        <li>常に最新の機能が提供される</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-title">🎯 使い所</div>
+      <ul>
+        <li>会計・人事・メールなど</li>
+        <li>自社で独自開発する必要がない<br><strong>「非競争領域」</strong>の業務システム</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ========================================
+     19. Retire
+     ======================================== -->
+<section>
+  <h2><span class="badge">6R-5</span> Retire — 「捨てる」</h2>
+  <div class="highlight-box">
+    資産の整理整頓。移行のタイミングで利用率が低いシステムや不要な機能を<strong>廃止</strong>する。
+  </div>
+  <div class="card-grid cols-2 mt">
+    <div class="card">
+      <div class="card-title">✅ メリット</div>
+      <ul>
+        <li>移行コストと将来の運用保守コストをゼロに</li>
+        <li>IT 資産の<strong>ブラックボックス化</strong>を防ぐ</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-title">🎯 使い所</div>
+      <ul>
+        <li>数ヶ月間アクセスがないシステム</li>
+        <li>代替手段がすでにある古いツール</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ========================================
+     20. Retain
+     ======================================== -->
+<section>
+  <h2><span class="badge">6R-6</span> Retain — 「維持する」</h2>
+  <div class="highlight-box">
+    あえて動かさない勇気。調査の結果、<strong>現時点ではクラウドへ移行せず</strong>オンプレミスに継続して残す。
+  </div>
+  <div class="card-grid cols-2 mt">
+    <div class="card">
+      <div class="card-title">✅ メリット</div>
+      <ul>
+        <li>不必要な移行コスト・リスクを<strong>回避</strong>できる</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-title">🎯 使い所</div>
+      <ul>
+        <li>減価償却が終わっていないハードウェア</li>
+        <li>特殊な周辺機器との接続が必要なもの</li>
+        <li>法規制でデータ持ち出しができないもの</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ========================================
+     21. ENDING
+     ======================================== -->
+<section class="slide-title" data-background-gradient="radial-gradient(ellipse at 70% 50%, #1a3a5c 0%, #0d1b2a 70%)">
+  <div class="title-deco"></div>
+  <h1 style="font-size:1.5em;">まとめ</h1>
+  <div class="title-deco"></div>
+  <div style="text-align:left; margin-top:1em; display:grid; grid-template-columns:1fr 1fr; gap:0.8em; font-size:0.65em;">
+    <div class="card">
+      <div class="card-title">💡 クラウド設計の本質</div>
+      <p>変化に強い仕組みを作る。<br>失敗を前提に設計し、自動回復させる。</p>
+    </div>
+    <div class="card">
+      <div class="card-title">🔧 マネージドサービス</div>
+      <p>差別化につながらない重労働をベンダーに委ね、<br>本来の価値創出に集中する。</p>
+    </div>
+    <div class="card">
+      <div class="card-title">⚖️ 責任共有モデル</div>
+      <p>「物理」はベンダー、「データ・設定」は自分。<br>境界線を明確に理解する。</p>
+    </div>
+    <div class="card">
+      <div class="card-title">🚀 6R 移行戦略</div>
+      <p>移行はゴールではなくスタート。<br>ビジネス目的に合った手法を選ぶ。</p>
+    </div>
+  </div>
+</section>
+
+</div>
+</div>
+
+<script src="node_modules/reveal.js/dist/reveal.js"></script>
+<script>
+  Reveal.initialize({
+    hash: true,
+    slideNumber: 'c/t',
+    transition: 'slide',
+    transitionSpeed: 'fast',
+    backgroundTransition: 'fade',
+    controls: true,
+    progress: true,
+    center: true,
+    width: 1280,
+    height: 720,
+    margin: 0.04,
+    plugins: []
+  });
+</script>
+</body>
+</html>

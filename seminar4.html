@@ -1,0 +1,659 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>システム設計 勉強会 第四回 — データベース設計</title>
+  <link rel="stylesheet" href="node_modules/reveal.js/dist/reset.css">
+  <link rel="stylesheet" href="node_modules/reveal.js/dist/reveal.css">
+  <link rel="stylesheet" href="node_modules/reveal.js/dist/theme/night.css">
+  <style>
+    :root {
+      --accent: #e2e8f0;
+      --dim:    #94a3b8;
+      --muted:  #475569;
+      --warn:   #f59e0b;
+      --good:   #4ade80;
+      --line:   rgba(255,255,255,0.1);
+    }
+
+    .reveal {
+      font-family: 'Segoe UI', 'Hiragino Sans', 'Meiryo', sans-serif;
+      background: #0a0a0a;
+    }
+    .reveal .slide-background { background: #0a0a0a; }
+
+    .slide-title h1 {
+      font-size: 2.4em;
+      font-weight: 300;
+      color: #fff;
+      letter-spacing: 0.06em;
+      border: none !important;
+    }
+    .slide-title .subtitle {
+      color: var(--dim);
+      font-size: 0.85em;
+      letter-spacing: 0.25em;
+      margin-top: 0.8em;
+    }
+    .title-deco {
+      width: 40px; height: 1px;
+      background: var(--muted);
+      margin: 1.2em auto;
+    }
+
+    .section-break h2 {
+      font-size: 2em;
+      font-weight: 300;
+      color: #fff;
+      border: none !important;
+    }
+    .section-num {
+      display: block;
+      font-size: 0.45em;
+      color: var(--muted);
+      letter-spacing: 0.35em;
+      text-transform: uppercase;
+      margin-bottom: 0.6em;
+    }
+
+    .reveal h2 {
+      font-size: 1.15em;
+      font-weight: 400;
+      color: #fff;
+      border-bottom: 1px solid var(--line) !important;
+      padding-bottom: 0.35em;
+      margin-bottom: 0.7em;
+      text-align: left;
+    }
+    .reveal h3 {
+      font-size: 0.85em;
+      font-weight: 600;
+      color: var(--accent);
+      margin-bottom: 0.3em;
+    }
+    .reveal p, .reveal li {
+      font-size: 0.7em;
+      line-height: 1.75;
+      color: #b0b8c8;
+      text-align: left;
+    }
+    .reveal ul { margin-left: 1.2em; }
+    .reveal ul li { margin-bottom: 0.15em; }
+
+    .card-grid { display: grid; gap: 0.7em; }
+    .card-grid.cols-2 { grid-template-columns: 1fr 1fr; }
+    .card-grid.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+    .card-grid.cols-4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      padding: 0.75em 0.9em;
+    }
+    .card .card-title {
+      font-size: 0.75em;
+      font-weight: 600;
+      color: #fff;
+      margin-bottom: 0.35em;
+    }
+    .card p, .card li { font-size: 0.63em; color: #94a3b8; }
+
+    .reveal table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.63em;
+      margin: 0.4em 0;
+    }
+    .reveal table th {
+      color: var(--dim);
+      padding: 0.5em 0.8em;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      font-weight: 600;
+      font-size: 0.9em;
+      letter-spacing: 0.05em;
+    }
+    .reveal table td {
+      padding: 0.45em 0.8em;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      color: #b0b8c8;
+      vertical-align: top;
+    }
+    .reveal table td:first-child {
+      color: #fff;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+
+    .highlight-box {
+      border-left: 2px solid var(--dim);
+      padding: 0.55em 0.9em;
+      margin: 0.5em 0;
+      font-size: 0.72em;
+      color: #b0b8c8;
+    }
+    .highlight-box strong { color: #fff; }
+
+    .warn-box {
+      border-left: 2px solid var(--warn);
+      padding: 0.55em 0.9em;
+      margin: 0.5em 0;
+      font-size: 0.68em;
+      color: #b0b8c8;
+    }
+
+    .badge {
+      display: inline-block;
+      border: 1px solid var(--muted);
+      border-radius: 3px;
+      padding: 0.05em 0.45em;
+      font-size: 0.55em;
+      color: var(--dim);
+      vertical-align: middle;
+      margin-right: 0.4em;
+    }
+
+    /* B-Treeノード図 */
+    .btree {
+      font-size: 0.6em;
+      text-align: center;
+    }
+    .btree-node {
+      display: inline-flex;
+      gap: 0;
+      border: 1px solid var(--line);
+      border-radius: 3px;
+      overflow: hidden;
+      margin: 0 0.3em;
+    }
+    .btree-cell {
+      padding: 0.3em 0.6em;
+      border-right: 1px solid var(--line);
+      color: #fff;
+      font-weight: 500;
+    }
+    .btree-cell:last-child { border-right: none; }
+    .btree-row { margin: 0.3em 0; }
+    .btree-arrow { color: var(--muted); font-size: 1.1em; }
+
+    /* レプリカ図 */
+    .diagram {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 1.2em;
+      font-size: 0.62em;
+      margin: 0.5em 0;
+    }
+    .db-box {
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      padding: 0.5em 0.8em;
+      text-align: center;
+      min-width: 80px;
+    }
+    .db-box .db-label { color: #fff; font-weight: 600; font-size: 1em; }
+    .db-box .db-sub   { color: var(--dim); font-size: 0.85em; margin-top: 0.2em; }
+    .db-primary { border-color: rgba(255,255,255,0.3); }
+    .db-replica { border-color: rgba(148,163,184,0.25); }
+    .arrow-label { color: var(--muted); font-size: 0.9em; text-align: center; }
+    .arrow-v { display: flex; flex-direction: column; align-items: center; gap: 0.1em; }
+
+    .text-warn  { color: var(--warn); }
+    .text-good  { color: var(--good); }
+    .text-muted { color: var(--muted); }
+    .mt { margin-top: 0.55em; }
+    .small { font-size: 0.6em !important; }
+  </style>
+</head>
+<body>
+<div class="reveal">
+<div class="slides">
+
+<!-- 1. タイトル -->
+<section class="slide-title">
+  <div class="title-deco"></div>
+  <h1>データベース設計</h1>
+  <div class="title-deco"></div>
+  <p class="subtitle">第 四 回</p>
+  <p class="text-muted mt" style="font-size:0.55em;">SQL vs NoSQL ／ インデックス ／ レプリケーション vs シャーディング</p>
+</section>
+
+<!-- ── SECTION ── -->
+<section class="section-break">
+  <span class="section-num">Section 01</span>
+  <h2>SQL vs NoSQL</h2>
+  <p style="color:#475569; font-size:0.8em;">データの構造と整合性要件で選ぶ</p>
+</section>
+
+<!-- 2. RDBMSとは -->
+<section>
+  <h2>RDBMS（リレーショナルDB）とは</h2>
+  <div class="card-grid cols-2">
+    <div>
+      <div class="highlight-box">
+        データを<strong>テーブル（行・列）</strong>で管理し、<strong>SQL</strong>で操作する。<br>
+        テーブル間を<strong>外部キー</strong>で結び、整合性を保つ。
+      </div>
+      <h3 style="margin-top:0.6em;">ACID 特性</h3>
+      <ul>
+        <li><strong style="color:#fff;">A</strong>tomicity — トランザクション全体が成功か失敗か</li>
+        <li><strong style="color:#fff;">C</strong>onsistency — 常に整合性のある状態を維持</li>
+        <li><strong style="color:#fff;">I</strong>solation — 同時実行しても互いに影響しない</li>
+        <li><strong style="color:#fff;">D</strong>urability — コミット済みデータは永続化される</li>
+      </ul>
+    </div>
+    <div>
+      <h3>代表的な製品</h3>
+      <div class="card-grid cols-2 mt">
+        <div class="card"><div class="card-title">PostgreSQL</div><p>OSS。高機能・拡張性◎</p></div>
+        <div class="card"><div class="card-title">MySQL</div><p>OSS。Web系で広く普及</p></div>
+        <div class="card"><div class="card-title">Amazon RDS</div><p>マネージド。運用負荷ゼロ</p></div>
+        <div class="card"><div class="card-title">Cloud Spanner</div><p>グローバル分散RDBMS</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 3. NoSQLとは -->
+<section>
+  <h2>NoSQLとは</h2>
+  <div class="highlight-box">
+    <strong>「Not Only SQL」</strong>。固定スキーマを持たず、用途に特化したデータモデルで<strong>大規模・高速</strong>なアクセスを実現する。
+  </div>
+  <div class="card-grid cols-4 mt">
+    <div class="card">
+      <div class="card-title">Key-Value</div>
+      <p>シンプルな辞書型。<br>超高速読み書き。</p>
+      <p class="text-muted" style="margin-top:0.4em; font-size:0.6em;">Redis, DynamoDB</p>
+    </div>
+    <div class="card">
+      <div class="card-title">Document</div>
+      <p>JSON/BSON 形式。<br>柔軟なスキーマ。</p>
+      <p class="text-muted" style="margin-top:0.4em; font-size:0.6em;">MongoDB, Firestore</p>
+    </div>
+    <div class="card">
+      <div class="card-title">Wide Column</div>
+      <p>列ファミリー構造。<br>時系列・ログ向き。</p>
+      <p class="text-muted" style="margin-top:0.4em; font-size:0.6em;">Cassandra, Bigtable</p>
+    </div>
+    <div class="card">
+      <div class="card-title">Graph</div>
+      <p>ノード・エッジ構造。<br>関係性の探索向き。</p>
+      <p class="text-muted" style="margin-top:0.4em; font-size:0.6em;">Neo4j, Amazon Neptune</p>
+    </div>
+  </div>
+  <div class="warn-box mt">
+    NoSQL は ACID を犠牲にする代わりに <strong>BASE</strong>（結果整合性・高可用性・柔軟なスキーマ）を重視する設計が多い。
+  </div>
+</section>
+
+<!-- 4. 比較表 -->
+<section>
+  <h2>SQL vs NoSQL — 比較</h2>
+  <table>
+    <tr>
+      <th></th>
+      <th>SQL（RDBMS）</th>
+      <th>NoSQL</th>
+    </tr>
+    <tr>
+      <td>データ構造</td>
+      <td>固定スキーマ（テーブル）</td>
+      <td>柔軟（JSON、KV、グラフ 等）</td>
+    </tr>
+    <tr>
+      <td>整合性</td>
+      <td>強整合性（ACID）</td>
+      <td>結果整合性（BASE）が多い</td>
+    </tr>
+    <tr>
+      <td>スケール</td>
+      <td>主に垂直スケール</td>
+      <td>水平スケールが得意</td>
+    </tr>
+    <tr>
+      <td>クエリ</td>
+      <td>SQL で複雑な結合・集計が可能</td>
+      <td>シンプルなアクセスパターンに最適化</td>
+    </tr>
+    <tr>
+      <td>向いてる用途</td>
+      <td>EC・金融・ERP など整合性最優先</td>
+      <td>SNS・IoT・キャッシュ・検索 など大規模低レイテンシ</td>
+    </tr>
+  </table>
+  <div class="highlight-box mt">
+    どちらかが「優れている」わけではない。<strong>アクセスパターン・整合性要件・スケール規模</strong>で選ぶ。
+  </div>
+</section>
+
+<!-- 5. どちらを選ぶか -->
+<section>
+  <h2>どちらを選ぶか — 判断フレームワーク</h2>
+  <div class="card-grid cols-2">
+    <div class="card">
+      <div class="card-title">SQL を選ぶとき</div>
+      <ul>
+        <li>トランザクションの整合性が必須（金融・在庫）</li>
+        <li>複雑な結合・集計クエリが必要</li>
+        <li>スキーマが安定していて変更が少ない</li>
+        <li>チームに SQL の習熟者がいる</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-title">NoSQL を選ぶとき</div>
+      <ul>
+        <li>スキーマが頻繁に変わる、または不定形データ</li>
+        <li>大量の書き込み・水平スケールが必要</li>
+        <li>アクセスパターンが単純（特定キーで取得）</li>
+        <li>結果整合性で許容できるユースケース</li>
+      </ul>
+    </div>
+  </div>
+  <div class="warn-box mt">
+    ⚠️ 現実のシステムは <strong>ポリグロット・パーシステンス</strong> — 用途ごとに複数のDBを使い分けるのが一般的。<br>
+    例）ユーザー情報は PostgreSQL、セッションは Redis、商品カタログは MongoDB
+  </div>
+</section>
+
+<!-- ── SECTION ── -->
+<section class="section-break">
+  <span class="section-num">Section 02</span>
+  <h2>インデックス</h2>
+  <p style="color:#475569; font-size:0.8em;">クエリを速くする仕組みとトレードオフ</p>
+</section>
+
+<!-- 6. インデックスとは -->
+<section>
+  <h2>インデックスとは？</h2>
+  <div class="highlight-box">
+    テーブルの<strong>目次</strong>。インデックスなしでは全行スキャン（フルスキャン）が必要だが、<br>
+    インデックスがあると <strong>O(N) → O(log N)</strong> で検索できる。
+  </div>
+  <div class="card-grid cols-2 mt">
+    <div>
+      <h3>B-Tree インデックスの仕組み</h3>
+      <div class="btree mt">
+        <div class="btree-row">
+          <span class="btree-node">
+            <span class="btree-cell">30</span>
+            <span class="btree-cell">70</span>
+          </span>
+        </div>
+        <div class="btree-row" style="color:var(--muted); font-size:0.9em;">↙　　　↓　　　↘</div>
+        <div class="btree-row">
+          <span class="btree-node"><span class="btree-cell">10</span><span class="btree-cell">20</span></span>
+          <span style="margin:0 0.5em;"></span>
+          <span class="btree-node"><span class="btree-cell">40</span><span class="btree-cell">60</span></span>
+          <span style="margin:0 0.5em;"></span>
+          <span class="btree-node"><span class="btree-cell">80</span><span class="btree-cell">90</span></span>
+        </div>
+        <p style="margin-top:0.6em; color:var(--dim);">各ノードがソート済み → 二分探索で高速検索</p>
+      </div>
+    </div>
+    <div>
+      <h3>インデックスが効く場面</h3>
+      <ul>
+        <li>WHERE 句での等値・範囲検索</li>
+        <li>ORDER BY / GROUP BY のソート回避</li>
+        <li>JOIN のキー結合</li>
+        <li>カバリングインデックス（SELECT 列ごとインデックスに含む）</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- 7. インデックスの種類 -->
+<section>
+  <h2>インデックスの種類</h2>
+  <table>
+    <tr>
+      <th>種類</th>
+      <th>特徴</th>
+      <th>向いている用途</th>
+    </tr>
+    <tr>
+      <td>B-Tree</td>
+      <td>デフォルト。等値・範囲検索・ソートに対応</td>
+      <td>一般的な WHERE / ORDER BY</td>
+    </tr>
+    <tr>
+      <td>Hash</td>
+      <td>等値検索のみ超高速。範囲検索は不可</td>
+      <td>= による完全一致検索</td>
+    </tr>
+    <tr>
+      <td>複合インデックス</td>
+      <td>複数列を組み合わせたインデックス</td>
+      <td>複数条件の絞り込み。列順序が重要</td>
+    </tr>
+    <tr>
+      <td>部分インデックス</td>
+      <td>条件を満たす行だけにインデックスを作成</td>
+      <td>NULL 除外・特定ステータスのみ</td>
+    </tr>
+    <tr>
+      <td>全文検索インデックス</td>
+      <td>テキストのトークン分割・転置インデックス</td>
+      <td>LIKE '%word%' の代替、全文検索</td>
+    </tr>
+  </table>
+</section>
+
+<!-- 8. インデックスのトレードオフ -->
+<section>
+  <h2>インデックスのトレードオフ</h2>
+  <div class="card-grid cols-2">
+    <div class="card">
+      <div class="card-title">✅ メリット</div>
+      <ul>
+        <li>SELECT クエリが劇的に高速化</li>
+        <li>ソート・集計のコスト削減</li>
+        <li>JOIN のパフォーマンス向上</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-title">⚠️ コスト</div>
+      <ul>
+        <li>INSERT / UPDATE / DELETE が遅くなる<br><span class="text-muted" style="font-size:0.9em;">（インデックスの更新が必要なため）</span></li>
+        <li>ディスク・メモリ消費が増加</li>
+        <li>多すぎるインデックスはオプティマイザを迷わせる</li>
+      </ul>
+    </div>
+  </div>
+  <div class="highlight-box mt">
+    インデックスは「読み取りが多く、書き込みが少ない」列に張るのが基本。<br>
+    <strong>EXPLAIN / EXPLAIN ANALYZE</strong> でクエリプランを確認し、必要なものだけ作る。
+  </div>
+  <div class="warn-box mt">
+    よくある失敗：<strong>低カーディナリティ（true/false など）</strong>の列にインデックスを張っても効果が薄い。
+  </div>
+</section>
+
+<!-- ── SECTION ── -->
+<section class="section-break">
+  <span class="section-num">Section 03</span>
+  <h2>レプリケーション vs シャーディング</h2>
+  <p style="color:#475569; font-size:0.8em;">DBをスケールさせる2つのアプローチ</p>
+</section>
+
+<!-- 9. レプリケーションとは -->
+<section>
+  <h2>レプリケーションとは</h2>
+  <div class="highlight-box">
+    <strong>同じデータを複数のDBノードにコピー</strong>する仕組み。<br>
+    読み取り負荷の分散と、障害時の自動フェイルオーバーが目的。
+  </div>
+  <div class="diagram mt">
+    <div class="db-box db-primary">
+      <div class="db-label">Primary</div>
+      <div class="db-sub">書き込み</div>
+    </div>
+    <div class="arrow-v">
+      <span style="color:var(--muted); font-size:0.8em;">レプリケーション</span>
+      <span style="color:var(--muted);">→→→</span>
+    </div>
+    <div style="display:flex; flex-direction:column; gap:0.4em;">
+      <div class="db-box db-replica"><div class="db-label">Replica 1</div><div class="db-sub">読み取り</div></div>
+      <div class="db-box db-replica"><div class="db-label">Replica 2</div><div class="db-sub">読み取り</div></div>
+    </div>
+  </div>
+  <div class="card-grid cols-2 mt">
+    <div class="card">
+      <div class="card-title">✅ できること</div>
+      <ul>
+        <li>読み取りスループットの向上</li>
+        <li>Primary 障害時のフェイルオーバー</li>
+        <li>バックアップ・レポート用途をReplicaに分離</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-title">⚠️ 注意点</div>
+      <ul>
+        <li>書き込みは Primary 1台に集中（書き込みは増やせない）</li>
+        <li>非同期レプリケーションは<strong>レプリケーション遅延</strong>が発生しうる</li>
+        <li>データ量は減らない（全ノードが同じデータを持つ）</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- 10. シャーディングとは -->
+<section>
+  <h2>シャーディングとは</h2>
+  <div class="highlight-box">
+    <strong>データを複数のDBノードに水平分割</strong>する仕組み。<br>
+    各ノード（シャード）は全体の一部だけを持つ。書き込みスケールとデータ量の増大に対応できる。
+  </div>
+  <div class="diagram mt">
+    <div class="db-box" style="border-color:rgba(255,255,255,0.25);">
+      <div class="db-label">アプリ</div>
+      <div class="db-sub">shard_key で振り分け</div>
+    </div>
+    <span style="color:var(--muted);">→</span>
+    <div style="display:flex; flex-direction:column; gap:0.4em;">
+      <div class="db-box db-replica"><div class="db-label">Shard A</div><div class="db-sub">user_id 0〜33%</div></div>
+      <div class="db-box db-replica"><div class="db-label">Shard B</div><div class="db-sub">user_id 33〜66%</div></div>
+      <div class="db-box db-replica"><div class="db-label">Shard C</div><div class="db-sub">user_id 66〜100%</div></div>
+    </div>
+  </div>
+  <div class="warn-box mt">
+    ⚠️ シャードをまたぐ JOIN・トランザクションは非常に困難。<strong>シャードキーの設計が最重要</strong>。<br>
+    偏ったキーを選ぶと <strong>ホットスポット</strong>（一部シャードに負荷集中）が発生する。
+  </div>
+</section>
+
+<!-- 11. レプリケーション vs シャーディング 比較 -->
+<section>
+  <h2>レプリケーション vs シャーディング</h2>
+  <table>
+    <tr>
+      <th></th>
+      <th>レプリケーション</th>
+      <th>シャーディング</th>
+    </tr>
+    <tr>
+      <td>目的</td>
+      <td>読み取り分散・高可用性</td>
+      <td>書き込み分散・データ量の水平拡張</td>
+    </tr>
+    <tr>
+      <td>データの持ち方</td>
+      <td>全ノードが同じデータをコピー</td>
+      <td>各ノードがデータの一部のみを保持</td>
+    </tr>
+    <tr>
+      <td>書き込みスケール</td>
+      <td>△（Primary 1台が上限）</td>
+      <td>◎（シャード数に比例して増加）</td>
+    </tr>
+    <tr>
+      <td>複雑さ</td>
+      <td>比較的シンプル</td>
+      <td>高い（クロスシャードクエリ・リバランス等）</td>
+    </tr>
+    <tr>
+      <td>障害対応</td>
+      <td>◎（フェイルオーバー自動化が容易）</td>
+      <td>△（特定シャード障害でそのデータが不可）</td>
+    </tr>
+  </table>
+  <div class="highlight-box mt">
+    実際のシステムは<strong>両方を組み合わせる</strong>のが一般的。<br>
+    例）各シャードに対して Primary + Replica を構成する。
+  </div>
+</section>
+
+<!-- 12. CAP定理 -->
+<section>
+  <h2>CAP 定理 — 分散DBの限界</h2>
+  <div class="highlight-box">
+    分散システムは <strong>C（整合性）・A（可用性）・P（分断耐性）</strong> の3つを同時には満たせない。<br>
+    ネットワーク分断（P）は現実に発生するため、<strong>CA か CP か AP</strong> の選択になる。
+  </div>
+  <div class="card-grid cols-3 mt">
+    <div class="card">
+      <div class="card-title">CP（整合性 + 分断耐性）</div>
+      <p>分断時は応答を止めてでも整合性を守る。</p>
+      <p class="text-muted" style="margin-top:0.3em; font-size:0.6em;">例：HBase, Zookeeper, MongoDB（設定次第）</p>
+    </div>
+    <div class="card">
+      <div class="card-title">AP（可用性 + 分断耐性）</div>
+      <p>分断時も応答し続けるが、古いデータを返す可能性がある（結果整合性）。</p>
+      <p class="text-muted" style="margin-top:0.3em; font-size:0.6em;">例：Cassandra, DynamoDB, CouchDB</p>
+    </div>
+    <div class="card">
+      <div class="card-title">CA（整合性 + 可用性）</div>
+      <p>単一ノードなら両立できるが、分散環境では現実的に選べない。</p>
+      <p class="text-muted" style="margin-top:0.3em; font-size:0.6em;">例：単一ノードの RDBMS</p>
+    </div>
+  </div>
+</section>
+
+<!-- まとめ -->
+<section class="slide-title">
+  <div class="title-deco"></div>
+  <h1 style="font-size:1.5em;">まとめ</h1>
+  <div class="title-deco"></div>
+  <div style="text-align:left; margin-top:1em; display:grid; grid-template-columns:1fr 1fr; gap:0.8em; font-size:0.65em;">
+    <div class="card">
+      <div class="card-title">SQL vs NoSQL</div>
+      <p>整合性・スキーマの安定性 → SQL。<br>スケール・柔軟性・大規模アクセス → NoSQL。<br>用途に応じて使い分ける（ポリグロット）。</p>
+    </div>
+    <div class="card">
+      <div class="card-title">インデックス</div>
+      <p>読み取りを速くする目次。<br>書き込みコストとのトレードオフを意識し、<br>EXPLAIN で必要なものだけ張る。</p>
+    </div>
+    <div class="card">
+      <div class="card-title">レプリケーション</div>
+      <p>同じデータを複製して読み取り分散・高可用性を実現。<br>書き込みスケールには効かない。</p>
+    </div>
+    <div class="card">
+      <div class="card-title">シャーディング</div>
+      <p>データを分割して書き込みスケールを実現。<br>複雑さが増すため、本当に必要になってから導入する。</p>
+    </div>
+  </div>
+</section>
+
+</div>
+</div>
+<script src="node_modules/reveal.js/dist/reveal.js"></script>
+<script>
+  Reveal.initialize({
+    hash: true,
+    slideNumber: 'c/t',
+    transition: 'slide',
+    transitionSpeed: 'fast',
+    backgroundTransition: 'fade',
+    controls: true,
+    progress: true,
+    center: true,
+    width: 1280,
+    height: 720,
+    margin: 0.04,
+  });
+</script>
+</body>
+</html>
